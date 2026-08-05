@@ -46,10 +46,32 @@ def get_gsheet_client():
     return gspread.authorize(creds)
 
 def append_data_to_gsheet(spreadsheets_id, new_row_data):
-    """Menambahkan 1 baris data penjualan baru ke Google Sheets"""
-    client = get_gsheet_client()
-    sheet = client.open_by_key(spreadsheets_id).worksheet("csv_penjualan")
-    sheet.append_row(new_row_data)
+    """Menambahkan 1 baris data penjualan baru ke Google Sheets
+    Membersihkan tipe data tipe numpy/datetime sebelum dikirim
+    """
+    try:
+        client = get_gsheet_client()
+        sheet = client.open_by_key(spreadsheets_id).worksheet("csv_penjualan")
+
+        #konveris data ke string/python agar kompatible dengan JSON
+        formatted_row = []
+        for item in new_row_data:
+            if isinstance(item, (pd.Timestamp, pd.DatetimeIndex)):
+                formatted_row.append(item.strftime('%Y-%m-%d'))
+            elif isinstance(item, (np.integer, np.floating)):
+                formatted_row.append(item.item())
+            else:
+                formatted_row.append(str(item) if item is not None else "")
+                
+        sheet.append_row(formatted_row)
+
+        #hapus cache Streamlit
+        load_sales.clear()
+        return True
+
+    except Exception as e:
+        st.error(f"Gagal menambahkan data ke Google Sheets: {e}")
+        return False
 
 #lOAD data & Model (Cached)
 @st.cache_data(ttl=60)
@@ -180,7 +202,7 @@ def load_metrics(_y_ts, _pred_terjual, target_cols):
         return None
 
 @st.cache_data(ttl=3600)
-def compute_evaluation_metrics(_models, df_sales, target_cols):
+def compute_evaluation_metrics(_model, df_sales, target_cols):
     try:
         df_eval = df_sales.tail(30).copy()
 
