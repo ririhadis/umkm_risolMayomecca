@@ -4,6 +4,7 @@ numpy
 holidays
 torch --index-url https://download.pytorch.org/whl/cpu
 pytorch-lightning
+lightning
 u8darts[torch]
 google-auth
 gspread
