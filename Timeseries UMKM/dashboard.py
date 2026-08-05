@@ -342,7 +342,6 @@ if button_predict and not sudah_input:
         try:
             #proses simpan data ke googlesheets
             append_data_to_gsheet(SPREADSHEET_ID, row_to_save)
-
             #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
             #Update Dataframe sales dengan data input hari ini
             today_data = pd.DataFrame([{
@@ -358,217 +357,215 @@ if button_predict and not sudah_input:
 
             #Clear cache untuk pemanggilan berikutnya
             load_sales.clear()
-        
             st.toast(
                 "Data hari ini berhasil tersimpan di Google Sheet!", icon="💾"
             )
-
         except Exception as e:
             st.error(
-                "Gagal menyimpan data ke Google Sheets! Pastikan st.secrets sudah dikonfigurasi. Detail Error: {e}"
+                f"Gagal menyimpan data ke Google Sheets! Pastikan st.secrets sudah dikonfigurasi. Detail Error: {e}"
             )
             st.stop()
 
-        #Jalankan prediksi untuk besok
-        with st.spinner(
-            "Perhitungan estimasi deman dan bahan baku"):
-                    
-            past_cov_cols =[
-                "Sisa"
-            ]
+    #Jalankan prediksi untuk besok
+    with st.spinner(
+        "Perhitungan estimasi deman dan bahan baku"):
+                  
+        past_cov_cols =[
+           "Sisa"
+        ]
 
-            y_ts = TimeSeries.from_dataframe(
-                df_total, value_cols=target_cols, fill_missing_dates=True, freq="D")
+        y_ts = TimeSeries.from_dataframe(
+        df_total, value_cols=target_cols, fill_missing_dates=True, freq="D")
 
-            past_conv_ts = TimeSeries.from_dataframe(
-                df_total, value_cols=past_cov_cols, fill_missing_dates=True, freq="D")
+        past_conv_ts = TimeSeries.from_dataframe(
+        df_total, value_cols=past_cov_cols, fill_missing_dates=True, freq="D")
 
-            #membangun covariates hari libur (termasuk tanggal prediksi besok)
-            besok_date = tanggal_baru + pd.Timedelta(days=1)
-            df_covariates = load_holiday(df_total.index)
+        #membangun covariates hari libur (termasuk tanggal prediksi besok)
+        besok_date = tanggal_baru + pd.Timedelta(days=1)
+        df_covariates = load_holiday(df_total.index)
 
-            future_cov_ts = TimeSeries.from_dataframe(
-                df_covariates, value_cols=["hari_libur"], fill_missing_dates=True, freq="D")
+        future_cov_ts = TimeSeries.from_dataframe(
+            df_covariates, value_cols=["hari_libur"], fill_missing_dates=True, freq="D")
         
-            #Melakukan prediksi /inverse transform
-            scaler_y = Scaler()
-            scaler_past = Scaler()
-            scaler_future = Scaler()
+        #Melakukan prediksi /inverse transform
+        scaler_y = Scaler()
+        scaler_past = Scaler()
+        scaler_future = Scaler()
 
-            y_scaled =scaler_y.fit_transform(y_ts)
-            past_conv_scaled = scaler_past.fit_transform(past_conv_ts)
-            future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
+        y_scaled =scaler_y.fit_transform(y_ts)
+        past_conv_scaled = scaler_past.fit_transform(past_conv_ts)
+        future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
 
-            #Model Prediction (Prediksi 1 hari ke depan n=1)
-            future_pred_scaled = model.predict(
-                n=1,
-                series=y_scaled,
-                past_covariates=past_conv_scaled,
-                future_covariates=future_conv_scaled
-            )
+        #Model Prediction (Prediksi 1 hari ke depan n=1)
+        future_pred_scaled = model.predict(
+             n=1,
+             series=y_scaled,
+             past_covariates=past_conv_scaled,
+             future_covariates=future_conv_scaled
+        )
+            
+        #Inverse scalling & safety buffer
+        df_pred = (scaler_y.inverse_transform(future_pred_scaled).to_dataframe().clip(lower=0))
+        df_rekom_menu = (df_pred * SAFETY_BUFFER).round().astype(int)
 
-            #Inverse scalling & safety buffer
-            df_pred = (scaler_y.inverse_transform(future_pred_scaled).to_dataframe().clip(lower=0))
-            df_rekom_menu = (df_pred * SAFETY_BUFFER).round().astype(int)
+        #Mengecek besok libur/tidak
+        besok_is_libur = df_covariates.loc[besok_date, "hari_libur"] == 1
+        if besok_is_libur:
+             df_rekom_menu.loc[:, :] =0
+             status_toko = "TUTUP"
+        else:
+             status_toko = "BUKA"
 
-            #Mengecek besok libur/tidak
-            besok_is_libur = df_covariates.loc[besok_date, "hari_libur"] == 1
-            if besok_is_libur:
-                df_rekom_menu.loc[:, :] =0
-                status_toko = "TUTUP"
-            else:
-                status_toko = "BUKA"
+        #hitung rekomendasi Stok bahan baku
+        total_pcs_produksi = df_rekom_menu.sum(axis=1).values[0]
+        stok_bahan = (rasio_resep * total_pcs_produksi).round(2)
 
-            #hitung rekomendasi Stok bahan baku
-            total_pcs_produksi = df_rekom_menu.sum(axis=1).values[0]
-            stok_bahan = (rasio_resep * total_pcs_produksi).round(2)
+        duration = round(time.time() - start_time, 2)
 
-            duration = round(time.time() - start_time, 2)
+    #============================
+    #Tampilan Output
+    #============================
+    st.markdown("---")
+    st.subheader(
+        f"Rekomendasi Produksi & Bahan Baku ({besok_date.strftime('%d %B %Y')})"
+    )
+    st.caption(f"Status Toko: **{status_toko}** | AI Inference: {duration} detik")
 
-        #============================
-        #Tampilan Output
-        #============================
-        st.markdown("---")
-        st.subheader(
-            f"Rekomendasi Produksi & Bahan Baku ({besok_date('%d %B %Y')})"
-        )
-        st.caption(f"Status Toko: **{status_toko}** | AI Inference: {duration} detik")
+    #Grid 1: Produksi Menu(Pcs)
+    st.markdown("##### Rekomendasi Produksi Menu (Pcs)")
+    m1, m2, m3, m4, m5 = st.column(5)
+    m1.metric("Ayam", f"{df_rekom_menu['Terjual Ayam'].iloc[0]} pcs")
+    m2.metric("Udang", f"{df_rekom_menu['Terjual Udang'].iloc[0]} pcs")
+    m3.metric("Keju", f"{df_rekom_menu['Terjual Keju'].iloc[0]} pcs")
+    m4.metric("Telur", f"{df_rekom_menu['Terjual Telur'].iloc[0]} pcs")
+    m5.metric("Sosis", f"{df_rekom_menu['Terjual Sosis'].iloc[0]} pcs")
 
-        #Grid 1: Produksi Menu(Pcs)
-        st.markdown("##### Rekomendasi Produksi Menu (Pcs)")
-        m1, m2, m3, m4, m5 = st.column(5)
-        m1.metric("Ayam", f"{df_rekom_menu['Terjual Ayam'].iloc[0]} pcs")
-        m2.metric("Udang", f"{df_rekom_menu['Terjual Udang'].iloc[0]} pcs")
-        m3.metric("Keju", f"{df_rekom_menu['Terjual Keju'].iloc[0]} pcs")
-        m4.metric("Telur", f"{df_rekom_menu['Terjual Telur'].iloc[0]} pcs")
-        m5.metric("Sosis", f"{df_rekom_menu['Terjual Sosis'].iloc[0]} pcs")
+    st.divider()
+    #Ekstraksi nilai bahan baku secara amana dari Pandas Series/Dictionary
+    ayam_kg=(
+        stok_bahan["Ayam (kg)"]
+        if "Ayam (kg)" in stok_bahan
+        else stok_bahan.get("Ayam", 0)
+    )
+    udang_kg=(
+        stok_bahan["Udang (kg)"]
+        if "Udang (kg)" in stok_bahan
+        else stok_bahan.get("Udang", 0)
+    )
+    sosis_pcs=(
+        stok_bahan["Sosis (pcs)"]
+        if "Sosis (pcs)" in stok_bahan
+        else stok_bahan.get("Sosis", 0)
+    )
+    keju_kg=(
+        stok_bahan["Keju (kg)"]
+        if "Keju (kg)" in stok_bahan
+        else stok_bahan.get("Keju", 0)
+    )
+    telur_btr=(
+        stok_bahan["Telur (butir)"]
+        if "Telur (butir)" in stok_bahan
+        else stok_bahan.get("Telur", 0)
+    )
+    tepung_kg=(
+        stok_bahan["Tepung (kg)"]
+        if "Tepung (kg)" in stok_bahan
+        else stok_bahan.get("Tepung", 0)
+    )
+    mentega_kg=(
+        stok_bahan["Mentega (kg)"]
+        if "Mentega (kg)" in stok_bahan
+        else stok_bahan.get("Mentega", 0)
+    )
+    mayonaise_kg=(
+        stok_bahan["Mayonaise (kg)"]
+        if "Mayonaise (kg)" in stok_bahan
+        else stok_bahan.get("Mayonaise", 0)
+    )
+    panir_kg=(
+        stok_bahan["Tepung Panir (kg)"]
+        if "Tepung Panir (kg)" in stok_bahan
+        else stok_bahan.get("Panir", 0)
+    )
+    kentang_wortel_kg=(
+        stok_bahan["Kentang Wortel (kg)"]
+        if "Kentang Wortel (kg)" in stok_bahan
+        else stok_bahan.get("Kentang_Wortel", 0)
+    )
+    seledri_kg=(
+        stok_bahan["Seledri (kg)"]
+        if "Seledri (kg)" in stok_bahan
+        else stok_bahan.get("Seledri", 0)
+    )
+    daun_bawang_kg=(
+        stok_bahan["Daun Bawang (kg)"]
+        if "Daun Bawang (kg)" in stok_bahan
+        else stok_bahan.get("Daun_bawang", 0)
+    )
+    bamer_kg=(
+        stok_bahan["Bawang Merah (kg)"]
+        if "Bawang Merah (kg)" in stok_bahan
+        else stok_bahan.get("Bamer", 0)
+    )
+    baput_kg=(
+        stok_bahan["Bawang Putih (kg)"]
+        if "Bawang Putih (kg))" in stok_bahan
+        else stok_bahan.get("Baput", 0)
+    )
 
-        st.divider()
-        #Ekstraksi nilai bahan baku secara amana dari Pandas Series/Dictionary
-        ayam_kg=(
-            stok_bahan["Ayam (kg)"]
-            if "Ayam (kg)" in stok_bahan
-            else stok_bahan.get("Ayam", 0)
-        )
-        udang_kg=(
-            stok_bahan["Udang (kg)"]
-            if "Udang (kg)" in stok_bahan
-            else stok_bahan.get("Udang", 0)
-        )
-        sosis_pcs=(
-            stok_bahan["Sosis (pcs)"]
-            if "Sosis (pcs)" in stok_bahan
-            else stok_bahan.get("Sosis", 0)
-        )
-        keju_kg=(
-            stok_bahan["Keju (kg)"]
-            if "Keju (kg)" in stok_bahan
-            else stok_bahan.get("Keju", 0)
-        )
-        telur_btr=(
-            stok_bahan["Telur (butir)"]
-            if "Telur (butir)" in stok_bahan
-            else stok_bahan.get("Telur", 0)
-        )
-        tepung_kg=(
-            stok_bahan["Tepung (kg)"]
-            if "Tepung (kg)" in stok_bahan
-            else stok_bahan.get("Tepung", 0)
-        )
-        mentega_kg=(
-            stok_bahan["Mentega (kg)"]
-            if "Mentega (kg)" in stok_bahan
-            else stok_bahan.get("Mentega", 0)
-        )
-        mayonaise_kg=(
-            stok_bahan["Mayonaise (kg)"]
-            if "Mayonaise (kg)" in stok_bahan
-            else stok_bahan.get("Mayonaise", 0)
-        )
-        panir_kg=(
-            stok_bahan["Tepung Panir (kg)"]
-            if "Tepung Panir (kg)" in stok_bahan
-            else stok_bahan.get("Panir", 0)
-        )
-        kentang_wortel_kg=(
-            stok_bahan["Kentang Wortel (kg)"]
-            if "Kentang Wortel (kg)" in stok_bahan
-            else stok_bahan.get("Kentang_Wortel", 0)
-        )
-        seledri_kg=(
-            stok_bahan["Seledri (kg)"]
-            if "Seledri (kg)" in stok_bahan
-            else stok_bahan.get("Seledri", 0)
-        )
-        daun_bawang_kg=(
-            stok_bahan["Daun Bawang (kg)"]
-            if "Daun Bawang (kg)" in stok_bahan
-            else stok_bahan.get("Daun_bawang", 0)
-        )
-        bamer_kg=(
-            stok_bahan["Bawang Merah (kg)"]
-            if "Bawang Merah (kg)" in stok_bahan
-            else stok_bahan.get("Bamer", 0)
-        )
-        baput_kg=(
-            stok_bahan["Bawang Putih (kg)"]
-            if "Bawang Putih (kg))" in stok_bahan
-            else stok_bahan.get("Baput", 0)
-        )
+    #Belanja Bahan Baku
+    st.markdown("##### Estimasi Kebutuhan Bahan Baku Utama")
+    b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14 = st.columns(14)
+    b1.metric("Ayam", f"{ayam_kg:.2f} Kg")
+    b2.metric("Udang", f"{udang_kg:.2f} Kg")
+    b3.metric("Sosis", f"{sosis_pcs} pcs")
+    b4.metric("Keju", f"{keju_kg:.2f} Kg")
+    b5.metric("Telur", f"{telur_btr} butir")
+    b6.metric("Tepung", f"{tepung_kg:.2f} Kg")
+    b7.metric("Mentega", f"{mentega_kg:.2f} Kg")
+    b8.metric("Mayonaise", f"{mayonaise_kg:.2f} Kg")
+    b9.metric("Panir", f"{panir_kg:.2f} Kg")
+    b10.metric("Kentang_Wortel", f"{kentang_wortel_kg:.2f} Kg")
+    b11.metric("Seledri", f"{seledri_kg:.2f} Kg")
+    b12.metric("Daun_bawang", f"{daun_bawang_kg:.2f} Kg")
+    b13.metric("Bamer", f"{bamer_kg:.2f} Kg")
+    b14.metric("Baput", f"{baput_kg:.2f} Kg")
 
-        #Belanja Bahan Baku
-        st.markdown("##### Estimasi Kebutuhan Bahan Baku Utama")
-        b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14 = st.columns(14)
-        b1.metric("Ayam", f"{ayam_kg:.2f} Kg")
-        b2.metric("Udang", f"{udang_kg:.2f} Kg")
-        b3.metric("Sosis", f"{sosis_pcs} pcs")
-        b4.metric("Keju", f"{keju_kg:.2f} Kg")
-        b5.metric("Telur", f"{telur_btr} butir")
-        b6.metric("Tepung", f"{tepung_kg:.2f} Kg")
-        b7.metric("Mentega", f"{mentega_kg:.2f} Kg")
-        b8.metric("Mayonaise", f"{mayonaise_kg:.2f} Kg")
-        b9.metric("Panir", f"{panir_kg:.2f} Kg")
-        b10.metric("Kentang_Wortel", f"{kentang_wortel_kg:.2f} Kg")
-        b11.metric("Seledri", f"{seledri_kg:.2f} Kg")
-        b12.metric("Daun_bawang", f"{daun_bawang_kg:.2f} Kg")
-        b13.metric("Bamer", f"{bamer_kg:.2f} Kg")
-        b14.metric("Baput", f"{baput_kg:.2f} Kg")
+    #================
+    #mengirim notifikasi telegram
+    #================
+    if telegram_token and chat_id:
+        pesan_telegram= f"""
+        *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
+        Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
+        Status Toko: *{status_toko}*
 
-#================
-#mengirim notifikasi telegram
-#================
-if telegram_token and chat_id:
-    pesan_telegram= f"""
-    *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
-    Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
-    Status Toko: *{status_toko}*
+        *Rekomendasi Produksi Menu:*
+        - Ayam: {df_rekom_menu['Terjual Ayam'].iloc[0]} pcs
+        - Udang: {df_rekom_menu['Terjual Udang'].iloc[0]} pcs
+        - Keju: {df_rekom_menu['Terjual Keju'].iloc[0]} pcs
+        - Telur: {df_rekom_menu['Terjual Telur'].iloc[0]} pcs
+        - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
 
-    *Rekomendasi Produksi Menu:*
-    - Ayam: {df_rekom_menu['Terjual Ayam'].iloc[0]} pcs
-    - Udang: {df_rekom_menu['Terjual Udang'].iloc[0]} pcs
-    - Keju: {df_rekom_menu['Terjual Keju'].iloc[0]} pcs
-    - Telur: {df_rekom_menu['Terjual Telur'].iloc[0]} pcs
-    - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
+        *Estimasi Belanja Bahan:*
+        - Ayam, {ayam_kg:.2f} Kg
+        - Udang, {udang_kg:.2f} Kg
+        - Sosis, {sosis_pcs} pcs
+        - Keju, {keju_kg:.2f} Kg
+        - Telur, {telur_btr} butir
+        - Tepung, {tepung_kg:.2f} Kg
+        - Mentega, {mentega_kg:.2f} Kg
+        - Mayonaise, {mayonaise_kg:.2f} Kg
+        - Panir, {panir_kg:.2f} Kg
+        - Kentang_Wortel, {kentang_wortel_kg:.2f} Kg
+        - Seledri, {seledri_kg:.2f} Kg
+        - Daun_bawang, {daun_bawang_kg:.2f} Kg
+        - Bamer, {bamer_kg:.2f} Kg
+        - Baput, {baput_kg:.2f} Kg
 
-    *Estimasi Belanja Bahan:*
-    - Ayam, {ayam_kg:.2f} Kg
-    - Udang, {udang_kg:.2f} Kg
-    - Sosis, {sosis_pcs} pcs
-    - Keju, {keju_kg:.2f} Kg
-    - Telur, {telur_btr} butir
-    - Tepung, {tepung_kg:.2f} Kg
-    - Mentega, {mentega_kg:.2f} Kg
-    - Mayonaise, {mayonaise_kg:.2f} Kg
-    - Panir, {panir_kg:.2f} Kg
-    - Kentang_Wortel, {kentang_wortel_kg:.2f} Kg
-    - Seledri, {seledri_kg:.2f} Kg
-    - Daun_bawang, {daun_bawang_kg:.2f} Kg
-    - Bamer, {bamer_kg:.2f} Kg
-    - Baput, {baput_kg:.2f} Kg
-
-    ⚡_Inference time: {duration}s_
-    """
-    if send_telegram_sync(pesan_telegram):
+        ⚡_Inference time: {duration}s_
+        """
+        if send_telegram_sync(pesan_telegram):
             st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
 
 #========
