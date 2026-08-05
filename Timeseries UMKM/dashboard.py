@@ -180,7 +180,7 @@ def load_metrics(_y_ts, _pred_terjual, target_cols):
         return None
 
 @st.cache_data(ttl=3600)
-def compute_evaluation_metrics(_models, df_sales, target_cols)
+def compute_evaluation_metrics(_models, df_sales, target_cols):
     try:
         df_eval = df_sales.tail(30).copy()
 
