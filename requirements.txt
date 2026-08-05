@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy
+holidays
+torch --index-url https://download.pytorch.org/whl/cpu
+u8darts
+google-auth
+gspread
+python-telegram-bot
