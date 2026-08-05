@@ -2,9 +2,8 @@ streamlit
 pandas
 numpy
 holidays
---find-links https://download.pytorch.org/whl/cpu/torch_stable.html
 torch
-u8darts[torch]
+u8darts
 google-auth
 gspread
 python-telegram-bot
