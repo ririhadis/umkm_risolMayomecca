@@ -71,7 +71,7 @@ def load_recipe():
     return rasio_bahan_mean
 
 @st.cache_data
-def load_holiday(sales_index):
+def load_holiday(_sales_index):
     df = pd.read_csv(gholiday_url, index_col='event')
 
     start_date = sales_index[0]
