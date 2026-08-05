@@ -262,10 +262,45 @@ target_cols = [
     "Terjual Sosis"
 ]
 
+#Konversi data historis ke TimeSeries
 y_ts_hist = TimeSeries.from_dataframe(
     df_sales, value_cols=target_cols, fill_missing_dates=True, freq="D")
 
-metrics = load_metrics(y_ts_hist, y_ts_hist, target_cols)
+#Ambil covariates untuk backtest
+df_covariates = load_holiday(df_sales.index)
+future_cov_ts = TimeSeries.from_dataframe(
+    df_covariates, value_cols=["hari_libur"], fill_missing_dates=True, freq="D"
+)
+past_cov_ts = TimeSeries.from_dataframe(
+    df_sales, value_cols=["Sisa"], fill_missing_dates=True, freq="D"
+)
+
+#Scalling data
+scaler_y = Scaler()
+scaler_past = Scaler()
+scaler_future = Scaler()
+
+y_scaled = scaler_y.fit_transform(y_ts_hist)
+past_conv_scaled = scaler_past.fit_transform(past_cov_ts)
+future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
+
+#Generate backtest/historical forecast (misal 14 hari terakhir)
+try:
+    with st.spinner("Menghitung evaluasi performa model"):
+        historical_pred_scaled = model.historical_forecasts(
+            series= y_scaled,
+            past_covariates= past_conv_scaled,
+            future_covariates= future_conv_scaled,
+            start=0.7,
+            forecast_horizon=1,
+            stride=1,
+            retrain=False,
+            verbose=False
+        )
+        historical_pred = sccaler_y.inverse_transform(historical_pred_scaled)
+        metrics = load_metrics(y_ts_hist, historical_pred, target_cols)
+except Exception:
+    metrics = None
 
 if metrics is not None:
     c1, c2, c3 = st.columns(3)
