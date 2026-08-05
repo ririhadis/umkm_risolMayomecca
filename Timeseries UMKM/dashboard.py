@@ -189,7 +189,7 @@ def compute_evaluation_metrics(_models, df_sales, target_cols):
         )
 
         past_cov_ts = TimeSeries.from_dataframe(
-            df_eval, value_cols=["Sisa"], fill_missing-dates=True, freq="D"
+            df_eval, value_cols=["Sisa"], fill_missing_dates=True, freq="D"
         )
 
         df_cov = load_holiday(df_eval.index)
