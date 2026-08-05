@@ -179,6 +179,54 @@ def load_metrics(_y_ts, _pred_terjual, target_cols):
     except Exception as e:
         return None
 
+@st.cache_data(ttl=3600)
+def compute_evaluation_metrics(_models, df_sales, target_cols)
+    try:
+        df_eval = df_sales.tail(30).copy()
+
+        y_ts_eval = TimeSeries.from_dataframe(
+            df_eval, value_cols=target_cols, fill_missing_dates=True, freq="D"
+        )
+
+        past_cov_ts = TimeSeries.from_dataframe(
+            df_eval, value_cols=["Sisa"], fill_missing-dates=True, freq="D"
+        )
+
+        df_cov = load_holiday(df_eval.index)
+        future_cov_ts = TimeSeries.from_dataframe(
+            df_cov,
+            value_cols=["hari_libur"],
+            fill_missing_dates=True,
+            freq="D",
+        )
+    
+        scaler_y = Scaler()
+        scaler_past = Scaler()
+        scaler_future = Scaler()
+
+        y_scaled = scaler_y.fit_transform(y_ts_eval)
+        past_conv_scaled = scaler_past.fit_transform(past_cov_ts)
+        future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
+
+        historical_pred_scaled = _model.historical_forecasts(
+             series=y_scaled,
+             past_covariates=past_conv_scaled,
+             future_covariates=future_conv_scaled,
+             start=0.5,
+             forecast_horizon=1,
+             stride=1,
+             retrain=False,
+             verbose=False,
+        )
+
+        historical_pred = scaler_y.inverse_transform(historical_pred_scaled)
+
+        return load_metrics(y_ts_eval, historical_pred, target_cols)
+
+    except Exception as e:
+        print(f"Error pada evaluasi model: {e}")
+        return None
+        
 #Helper telegram
 def send_telegram_sync(message):
     try:
@@ -262,45 +310,8 @@ target_cols = [
     "Terjual Sosis"
 ]
 
-#Konversi data historis ke TimeSeries
-y_ts_hist = TimeSeries.from_dataframe(
-    df_sales, value_cols=target_cols, fill_missing_dates=True, freq="D")
-
-#Ambil covariates untuk backtest
-df_covariates = load_holiday(df_sales.index)
-future_cov_ts = TimeSeries.from_dataframe(
-    df_covariates, value_cols=["hari_libur"], fill_missing_dates=True, freq="D"
-)
-past_cov_ts = TimeSeries.from_dataframe(
-    df_sales, value_cols=["Sisa"], fill_missing_dates=True, freq="D"
-)
-
-#Scalling data
-scaler_y = Scaler()
-scaler_past = Scaler()
-scaler_future = Scaler()
-
-y_scaled = scaler_y.fit_transform(y_ts_hist)
-past_conv_scaled = scaler_past.fit_transform(past_cov_ts)
-future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
-
-#Generate backtest/historical forecast (misal 14 hari terakhir)
-try:
-    with st.spinner("Menghitung evaluasi performa model"):
-        historical_pred_scaled = model.historical_forecasts(
-            series= y_scaled,
-            past_covariates= past_conv_scaled,
-            future_covariates= future_conv_scaled,
-            start=0.7,
-            forecast_horizon=1,
-            stride=1,
-            retrain=False,
-            verbose=False
-        )
-        historical_pred = sccaler_y.inverse_transform(historical_pred_scaled)
-        metrics = load_metrics(y_ts_hist, historical_pred, target_cols)
-except Exception:
-    metrics = None
+with st.spinner("Menghitung evaluasi performa model..."):
+    metrics = compute_evaluation_metrics(model, df_sales, target_cols)
 
 if metrics is not None:
     c1, c2, c3 = st.columns(3)
