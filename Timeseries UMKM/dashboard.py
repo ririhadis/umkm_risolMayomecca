@@ -393,36 +393,36 @@ if button_predict and not sudah_input:
             )
             st.stop()
 
-    #Jalankan prediksi untuk besok
-    with st.spinner(
-        "Perhitungan estimasi deman dan bahan baku"):
-                  
-        past_cov_cols =[
-           "Sisa"
-        ]
+    # Jalankan prediksi untuk besok
+    with st.spinner("Perhitungan estimasi demand dan bahan baku"):
+        
+        past_cov_cols = ["Sisa"]
 
-        y_ts = TimeSeries.from_dataframe(
-        df_total, value_cols=target_cols, fill_missing_dates=True, freq="D")
-
-        past_conv_ts = TimeSeries.from_dataframe(
-        df_total, value_cols=past_cov_cols, fill_missing_dates=True, freq="D")
-
-        # 1. Tentukan tanggal prediksi besok dan perpanjang rentang covariates (+7 hari buffer)
+        # 1. Tentukan tanggal besok & buat extended index (+7 hari buffer)
         besok_date = tanggal_baru + pd.Timedelta(days=1)
         extended_index = pd.date_range(
-            start=df_total.index[0], 
-            end=tanggal_baru + pd.Timedelta(days=7), 
+            start=df_total.index[0],
+            end=tanggal_baru + pd.Timedelta(days=7),
             freq="D"
         )
 
-        # 2. Muat covariates libur dengan rentang tanggal yang sudah mencakup hari esok
+        # 2. Buat TimeSeries utama
+        y_ts = TimeSeries.from_dataframe(
+            df_total, value_cols=target_cols, fill_missing_dates=True, freq="D"
+        )
+
+        past_conv_ts = TimeSeries.from_dataframe(
+            df_total, value_cols=past_cov_cols, fill_missing_dates=True, freq="D"
+        )
+
+        # 3. Buat future covariates dari extended_index
         df_covariates = load_holiday(extended_index)
 
         future_cov_ts = TimeSeries.from_dataframe(
             df_covariates, value_cols=["hari_libur"], fill_missing_dates=True, freq="D"
         )
-        
-        # 3. Scaling data
+
+        # 4. Melakukan scaling (Gunakan Scaler terpisah)
         scaler_y = Scaler()
         scaler_past = Scaler()
         scaler_future = Scaler()
@@ -431,12 +431,15 @@ if button_predict and not sudah_input:
         past_conv_scaled = scaler_past.fit_transform(past_conv_ts)
         future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
 
-        # 4. Model Prediction (Prediksi 1 hari ke depan n=1)
+        # 5. Potong past_covariates agar panjangnya presisi sejajar dengan y_scaled
+        past_conv_scaled = past_conv_scaled.slice_intersect(y_scaled)
+
+        # 6. Model Prediction (Prediksi 1 hari ke depan n=1)
         future_pred_scaled = model.predict(
-             n=1,
-             series=y_scaled,
-             past_covariates=past_conv_scaled,
-             future_covariates=future_conv_scaled
+            n=1,
+            series=y_scaled,
+            past_covariates=past_conv_scaled,
+            future_covariates=future_conv_scaled
         )
             
         #Inverse scalling & safety buffer
