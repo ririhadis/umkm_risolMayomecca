@@ -5,6 +5,7 @@ import asyncio
 import time
 from datetime import datetime
 import holidays
+import os
 
 from darts import TimeSeries
 from darts.models import TFTModel
@@ -23,10 +24,12 @@ st.set_page_config(
 
 #link dataset, model dan token
 SPREADSHEET_ID = "1c7sG94xHTxR98rTUIPkyKkOaSy7c-je8edwoHtFvWJg"
-gsheet_url = "https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=csv_penjualan"
-gsheet_resep = "https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=stok_bahan"
-gholiday_url = "https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=hari_libur_custom"
-model_path = "tft_model_produksi.pt"
+gsheet_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=csv_penjualan"
+gsheet_resep = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=stok_bahan"
+gholiday_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=hari_libur_custom"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "tft_model_produksi.pt")
 telegram_token = st.secrets.get("TELEGRAM_TOKEN", "")
 chat_id = st.secrets.get("CHAT_ID", "")
 
@@ -228,7 +231,7 @@ if sudah_input:
     st.sidebar.caption(
         "**SOP:** Input baru hanya dapat dilakukan esok hari setelah penjualan selesai"
     )
-    tanggal_baru = df_saes.index.max()
+    tanggal_baru = df_sales.index.max()
 else:
     tanggal_baru = df_sales.index.max() + pd.Timedelta(days=1)
     st.sidebar.info(f"Tanggal Input: **{tanggal_baru.strftime('%Y-%m-%d')}**")
@@ -491,7 +494,7 @@ if button_predict and not sudah_input:
 if telegram_token and chat_id:
     pesan_telegram= f"""
     *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
-    Target Tanggal: *{besok_date.strftime('%Y-%m-%d')}*
+    Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
     Status Toko: *{status_toko}*
 
     *Rekomendasi Produksi Menu:*
