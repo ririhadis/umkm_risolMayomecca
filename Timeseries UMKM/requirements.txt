@@ -2,7 +2,7 @@ streamlit
 pandas
 numpy
 holidays
-torch
+torch --index-url https://download.pytorch.org/whl/cpu
 u8darts
 google-auth
 gspread
