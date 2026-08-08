@@ -102,14 +102,13 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         if col in df_input.columns:
             df_input[col] = pd.to_numeric(df_input[col], errors="coerce")
 
-    # 3. SOLUSI UTAMA: Resample harian secara eksplisit
-    # Ini otomatis menghapus duplikat DAN mengisi tanggal yang bolong/terlewat
+    # menghapus duplikat DAN mengisi tanggal yang bolong/terlewat
     df_clean = df_input[all_needed_cols].resample("D").last().fillna(0)
 
     start_date = df_clean.index[0]
-    end_date = df_clean.index[-1] + pd.Timedelta(days=7)
+    end_date = df_clean.index[-1] + pd.Timedelta(days=14)
 
-    # 4. Buat TimeSeries Darts (Sekarang dijamin aman dari error frequency)
+    # 4. Buat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D")
     past_ts = TimeSeries.from_dataframe(
         df_clean, value_cols=past_cov_cols, freq="D"
