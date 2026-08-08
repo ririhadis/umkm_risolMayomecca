@@ -53,19 +53,23 @@ def append_data_to_gsheet(spreadsheets_id, new_row_data):
         client = get_gsheet_client()
         sheet = client.open_by_key(spreadsheets_id).worksheet("csv_penjualan")
 
-        #konveris data ke string/python agar kompatible dengan JSON
         formatted_row = []
         for item in new_row_data:
             if isinstance(item, (pd.Timestamp, pd.DatetimeIndex)):
-                formatted_row.append(item.strftime('%Y-%m-%d'))
-            elif isinstance(item, (np.integer, np.floating)):
-                formatted_row.append(item.item())
+                formatted_row.append(item.strftime("%Y-%m-%d"))
+            # PERBAIKAN: Tambahkan (int, float) Python standar
+            elif isinstance(item, (int, float, np.integer, np.floating)):
+                # Kirim sebagai angka asli (bukan string)
+                formatted_row.append(
+                    item.item() if hasattr(item, "item") else item
+                )
             else:
                 formatted_row.append(str(item) if item is not None else "")
-                
-        sheet.append_row(formatted_row)
 
-        #hapus cache Streamlit
+        # PERBAIKAN: Gunakan USER_ENTERED agar Google Sheets mengenali tipe angka/tanggal otomatis
+        sheet.append_row(formatted_row, value_input_option="USER_ENTERED")
+
+        # Hapus cache Streamlit
         load_sales.clear()
         return True
 
