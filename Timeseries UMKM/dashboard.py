@@ -312,6 +312,13 @@ else:
     st.sidebar.info(f"Tanggal Input: **{tanggal_baru.strftime('%Y-%m-%d')}**")
     st.sidebar.caption("**SOP:** Masukkan total penjualan setelah penjualan selesai")
     
+#input total produksi
+prod_ayam = st.sidebar.number_input("Produksi Ayam", min_value=0)
+prod_udang = st.sidebar.number_input("Produksi Udang", min_value=0)
+prod_keju = st.sidebar.number_input("Produksi Keju", min_value=0)
+prod_telur = st.sidebar.number_input("Produksi Telur", min_value=0)
+prod_sosis = st.sidebar.number_input("Produksi Sosis", min_value=0)
+tot_prod = prod_ayam +  prod_udang + prod_keju + prod_telur + prod_sosis
 
 #input penjualan 5 menu utama
 input_ayam = st.sidebar.number_input("Terjual Ayam", min_value=0)
@@ -319,9 +326,11 @@ input_udang = st.sidebar.number_input("Terjual Udang", min_value=0)
 input_keju = st.sidebar.number_input("Terjual Keju", min_value=0)
 input_telur = st.sidebar.number_input("Terjual Telur", min_value=0)
 input_sosis = st.sidebar.number_input("Terjual Sosis", min_value=0)
+tot_sale = input_ayam + input_udang + input_keju + input_telur + input_sosis
 
 #Input sisa stok
-input_sisa = st.sidebar.number_input("Sisa Stok (Semua Menu)", min_value=0)
+sisa = tot_prod - tot_sale
+input_sisa = st.sidebar.metric("Sisa Stok (Semua Menu)", value=sisa)
 
 button_predict = st.sidebar.button("🚀 Simpan & Prediksi Produksi Besok", disabled=sudah_input)
 
@@ -358,12 +367,20 @@ if button_predict and not sudah_input:
     with st.spinner("Menyimpan data hari ini ke Google Sheets"):
         row_to_save= [
             tanggal_baru.strftime("%Y-%m-%d"),
+            tanggal_baru.strftime("%A"), #untuk mendapatkan nama hari
+            prod_ayam,
+            prod_udang,
+            prod_keju,
+            prod_telur,
+            prod_sosis,
+            tot_prod,
             input_ayam,
             input_udang,
             input_keju,
             input_telur,
             input_sosis,
-            input_sisa
+            tot_sale,
+            sisa
         ]
 
         try:
@@ -372,15 +389,24 @@ if button_predict and not sudah_input:
             #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
             #Update Dataframe sales dengan data input hari ini
             today_data = pd.DataFrame([{
+                "Tanggal": tanggal_baru.strftime("%Y-%m-%d"),
+                "Hari": tanggal_baru.strftime("%A"),
+                "Produksi Ayam": prod_ayam,
+                "Produksi Udang": prod_udang,
+                "Produksi Keju": prod_keju,
+                "Produksi Telur": prod_telur,
+                "Produksi Sosis": prod_sosis,
+                "Total Produksi": tot_prod,
                 "Terjual Ayam": input_ayam,
                 "Terjual Udang": input_udang,
                 "Terjual Keju": input_keju,
                 "Terjual Telur": input_telur,
                 "Terjual Sosis": input_sosis,
-                "Sisa": input_sisa
+                "Total Terjual": tot_sale,
+                "Sisa": sisa
             }], index=[tanggal_baru])
 
-            df_total = pd.concat([df_sales, today_data])
+            df_total = pd.concat([df_sales, today_data], ignore_index=True)
 
             #Clear cache untuk pemanggilan berikutnya
             load_sales.clear()
