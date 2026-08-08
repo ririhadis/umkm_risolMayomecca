@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 import holidays
 import os
+import pytz
 
 from darts import TimeSeries
 from darts.models import TFTModel
@@ -347,11 +348,13 @@ st.sidebar.header("📥 Input Penjualan Hari Ini")
 
 #SOP & Validasi tanggal
 #Mencegah menginput total penjualan harian dua kali
-tanggal_terakhir_db = df_sales.index.max().date()
-tanggal_hari_ini = datetime.now().date()
+#menggunakan zona waktu lokal (WIB), menghindari jam UTC server
+tz = pytz.timezone('Asia/Jakarta')
+tanggal_terakhir_db = datetime.now(tz).date()
+tanggal_hari_ini = df_sales.index.max().date()
 
 #Pengecekan apakah data hari ini sudah pernah disimpan
-sudah_input = tanggal_terakhir_db == tanggal_hari_ini
+sudah_input = (tanggal_terakhir_db >= tanggal_hari_ini)
 
 if sudah_input:
     st.sidebar.warning(
@@ -360,9 +363,8 @@ if sudah_input:
     st.sidebar.caption(
         "**SOP:** Input baru hanya dapat dilakukan esok hari setelah penjualan selesai"
     )
-    tanggal_baru = df_sales.index.max()
 else:
-    tanggal_baru = df_sales.index.max() + pd.Timedelta(days=1)
+    tanggal_baru = tanggal_hari_ini
     st.sidebar.info(f"Tanggal Input: **{tanggal_baru.strftime('%Y-%m-%d')}**")
     st.sidebar.caption("**SOP:** Masukkan total penjualan setelah penjualan selesai")
     
