@@ -9,3 +9,4 @@ u8darts[torch]
 google-auth
 gspread
 python-telegram-bot
+pytz
