@@ -93,13 +93,19 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     if "Tanggal" in df_input.columns:
         df_input = df_input.set_index("Tanggal")
 
-    # 2. Paksa Index menjadi DatetimeIndex secara eksplisit
+    # 2. Paksa Index menjadi DatetimeIndex
     df_input.index = pd.to_datetime(df_input.index)
+
+    # 3. PERBAIKAN: Hapus tanggal duplikat (ambil data paling baru/paling bawah)
+    df_input = df_input[~df_input.index.duplicated(keep="last")]
+
+    # 4. Pastikan data terurut kronologis berdasarkan tanggal
+    df_input = df_input.sort_index()
 
     start_date = df_input.index[0]
     end_date = df_input.index[-1] + pd.Timedelta(days=7)
 
-    # 3. Target & Past Covariates
+    # 5. Target & Past Covariates
     y_ts = TimeSeries.from_dataframe(
         df_input, value_cols=target_cols, fill_missing_dates=True, freq="D"
     )
@@ -107,7 +113,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         df_input, value_cols=past_cov_cols, fill_missing_dates=True, freq="D"
     )
 
-    # 4. Future Covariates LENGKAP dari start_date s.d end_date
+    # 6. Future Covariates LENGKAP dari start_date s.d end_date
     ext_index = pd.date_range(start=start_date, end=end_date, freq="D")
     df_covariates = load_holiday(ext_index)
     future_ts = TimeSeries.from_dataframe(
@@ -117,7 +123,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         freq="D",
     )
 
-    # 5. Fit & Transform Scaler
+    # 7. Fit & Transform Scaler
     scaler_y, scaler_past, scaler_future = Scaler(), Scaler(), Scaler()
     y_scaled = scaler_y.fit_transform(y_ts)
     past_scaled = scaler_past.fit_transform(past_ts).slice_intersect(y_scaled)
@@ -130,7 +136,6 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         scaler_y,
         df_covariates,
     )
-
 @st.cache_data
 def load_recipe():
     #Memuat data resep & rasio bahan baku
