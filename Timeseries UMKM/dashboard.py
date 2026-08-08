@@ -330,7 +330,7 @@ tot_sale = input_ayam + input_udang + input_keju + input_telur + input_sosis
 
 #Input sisa stok
 sisa = tot_prod - tot_sale
-input_sisa = st.sidebar.metric("Sisa Stok (Semua Menu)", value=sisa)
+st.sidebar.metric("Sisa Stok (Semua Menu)", value=sisa)
 
 button_predict = st.sidebar.button("🚀 Simpan & Prediksi Produksi Besok", disabled=sudah_input)
 
