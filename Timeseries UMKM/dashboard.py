@@ -81,6 +81,45 @@ def load_sales():
     df = df.set_index("Tanggal").sort_index()
     return df
 
+def prepare_darts_data(df_input, target_cols, past_cov_cols):
+    """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
+start_date = df_input.index[0]
+    end_date = df_input.index[-1] + pd.Timedelta(days=7)
+
+    # 1. Target & Past Covariates
+    y_ts = TimeSeries.from_dataframe(
+        df_input, value_cols=target_cols, fill_missing_dates=True, freq="D"
+    )
+    past_ts = TimeSeries.from_dataframe(
+        df_input, value_cols=past_cov_cols, fill_missing_dates=True, freq="D"
+    )
+
+    # 2. Future Covariates LENGKAP dari start_date s.d end_date
+    ext_index = pd.date_range(start=start_date, end=end_date, freq="D")
+    df_covariates = load_holiday(ext_index)
+    future_ts = TimeSeries.from_dataframe(
+        df_covariates,
+        value_cols=["hari_libur"],
+        fill_missing_dates=True,
+        freq="D",
+    )
+
+    # 3. Fit & Transform Scaler
+    scaler_y = Scaler()
+    scaler_past = Scaler()
+    scaler_future =  Scaler()
+    y_scaled = scaler_y.fit_transform(y_ts)
+    past_scaled = scaler_past.fit_transform(past_ts).slice_intersect(y_scaled)
+    future_scaled = scaler_future.fit_transform(future_ts)
+
+    return (
+        y_scaled,
+        past_scaled,
+        future_scaled,
+        scaler_y,
+        df_covariates,
+    )
+
 @st.cache_data
 def load_recipe():
     #Memuat data resep & rasio bahan baku
@@ -421,46 +460,17 @@ if button_predict and not sudah_input:
 
     # Jalankan prediksi untuk besok
     with st.spinner("Perhitungan estimasi demand dan bahan baku"):
-        
-        past_cov_cols = ["Sisa"]
-
-        # 1. Tentukan tanggal besok & buat extended index (+7 hari buffer)
         besok_date = tanggal_baru + pd.Timedelta(days=1)
-        extended_index = pd.date_range(
-            start=df_total.index[0],
-            end=tanggal_baru + pd.Timedelta(days=7),
-            freq="D"
-        )
 
-        # 2. Buat TimeSeries utama
-        y_ts = TimeSeries.from_dataframe(
-            df_total, value_cols=target_cols, fill_missing_dates=True, freq="D"
-        )
-
-        past_conv_ts = TimeSeries.from_dataframe(
-            df_total, value_cols=past_cov_cols, fill_missing_dates=True, freq="D"
-        )
-
-        # 3. Buat future covariates dari extended_index
-        df_covariates = load_holiday(extended_index)
-
-        future_cov_ts = TimeSeries.from_dataframe(
-            df_covariates, value_cols=["hari_libur"], fill_missing_dates=True, freq="D"
-        )
-
-        # 4. Melakukan scaling (Gunakan Scaler terpisah)
-        scaler_y = Scaler()
-        scaler_past = Scaler()
-        scaler_future = Scaler()
-
-        y_scaled = scaler_y.fit_transform(y_ts)
-        past_conv_scaled = scaler_past.fit_transform(past_conv_ts)
-        future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
-
-        # 5. Potong past_covariates agar panjangnya presisi sejajar dengan y_scaled
-        past_conv_scaled = past_conv_scaled.slice_intersect(y_scaled)
-
-        # 6. Model Prediction (Prediksi 1 hari ke depan n=1)
+        #memnaggil fungsi helper dasrts
+        (y_scaled,
+         past_conv_scaled,
+         future_conv_scaled,
+         scaler_y,
+         df_covariates,
+        ) = prepare_darts_data(df_total, target_cols, ["Sisa"])
+        
+        #Model Prediction (Prediksi 1 hari ke depan n=1)
         future_pred_scaled = model.predict(
             n=1,
             series=y_scaled,
