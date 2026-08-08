@@ -87,10 +87,19 @@ def load_sales():
 
 def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
+df_input = df_input.copy()
+
+    # 1. Jika kolom 'Tanggal' masih ada, jadikan Index
+    if "Tanggal" in df_input.columns:
+        df_input = df_input.set_index("Tanggal")
+
+    # 2. Paksa Index menjadi DatetimeIndex secara eksplisit
+    df_input.index = pd.to_datetime(df_input.index)
+
     start_date = df_input.index[0]
     end_date = df_input.index[-1] + pd.Timedelta(days=7)
 
-    # 1. Target & Past Covariates
+    # 3. Target & Past Covariates
     y_ts = TimeSeries.from_dataframe(
         df_input, value_cols=target_cols, fill_missing_dates=True, freq="D"
     )
@@ -98,7 +107,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         df_input, value_cols=past_cov_cols, fill_missing_dates=True, freq="D"
     )
 
-    # 2. Future Covariates LENGKAP dari start_date s.d end_date
+    # 4. Future Covariates LENGKAP dari start_date s.d end_date
     ext_index = pd.date_range(start=start_date, end=end_date, freq="D")
     df_covariates = load_holiday(ext_index)
     future_ts = TimeSeries.from_dataframe(
@@ -108,10 +117,8 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         freq="D",
     )
 
-    # 3. Fit & Transform Scaler
-    scaler_y = Scaler()
-    scaler_past = Scaler()
-    scaler_future =  Scaler()
+    # 5. Fit & Transform Scaler
+    scaler_y, scaler_past, scaler_future = Scaler(), Scaler(), Scaler()
     y_scaled = scaler_y.fit_transform(y_ts)
     past_scaled = scaler_past.fit_transform(past_ts).slice_intersect(y_scaled)
     future_scaled = scaler_future.fit_transform(future_ts)
