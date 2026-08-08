@@ -89,45 +89,40 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
     df_input = df_input.copy()
 
-    # 1. Jika 'Tanggal' masih jadi kolom, ubah ke datetime DULU sebelum jadi index
+    # 1. Pastikan Tanggal menjadi Index dengan tipe Datetime (Normalized)
     if "Tanggal" in df_input.columns:
         df_input["Tanggal"] = pd.to_datetime(df_input["Tanggal"]).dt.normalize()
         df_input = df_input.set_index("Tanggal")
     else:
-        # Jika sudah jadi index, paksa konversi & bersihkan jam/menit
         df_input.index = pd.to_datetime(df_input.index).normalize()
 
-    # 2. HAPUS DUPLIKAT TANGGAL SECARA TEGAS (Simpan inputan paling baru/terakhir)
-    df_input = df_input[~df_input.index.duplicated(keep="last")]
-
-    # 3. Urutkan berdasarkan tanggal
-    df_input = df_input.sort_index()
-
-    # 4. Pastikan semua kolom angka (Target & Sisa) bertipe float/int
+    # 2. Pastikan semua kolom target & covariate bertipe angka murni
     all_needed_cols = list(target_cols) + list(past_cov_cols)
     for col in all_needed_cols:
         if col in df_input.columns:
-            df_input[col] = pd.to_numeric(df_input[col], errors="coerce").fillna(0)
+            df_input[col] = pd.to_numeric(df_input[col], errors="coerce")
 
-    start_date = df_input.index[0]
-    end_date = df_input.index[-1] + pd.Timedelta(days=7)
+    # 3. SOLUSI UTAMA: Resample harian secara eksplisit
+    # Ini otomatis menghapus duplikat DAN mengisi tanggal yang bolong/terlewat
+    df_clean = df_input[all_needed_cols].resample("D").last().fillna(0)
 
-    # 5. Buat TimeSeries Darts (Tanpa fill_missing_dates agar tidak konflik)
-    y_ts = TimeSeries.from_dataframe(
-        df_input, value_cols=target_cols, freq="D"
-    )
+    start_date = df_clean.index[0]
+    end_date = df_clean.index[-1] + pd.Timedelta(days=7)
+
+    # 4. Buat TimeSeries Darts (Sekarang dijamin aman dari error frequency)
+    y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D")
     past_ts = TimeSeries.from_dataframe(
-        df_input, value_cols=past_cov_cols, freq="D"
+        df_clean, value_cols=past_cov_cols, freq="D"
     )
 
-    # 6. Future Covariates LENGKAP
+    # 5. Future Covariates LENGKAP
     ext_index = pd.date_range(start=start_date, end=end_date, freq="D")
     df_covariates = load_holiday(ext_index)
     future_ts = TimeSeries.from_dataframe(
         df_covariates, value_cols=["hari_libur"], freq="D"
     )
 
-    # 7. Scaling
+    # 6. Scaling
     scaler_y, scaler_past, scaler_future = Scaler(), Scaler(), Scaler()
     y_scaled = scaler_y.fit_transform(y_ts)
     past_scaled = scaler_past.fit_transform(past_ts).slice_intersect(y_scaled)
