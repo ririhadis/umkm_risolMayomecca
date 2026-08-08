@@ -87,7 +87,7 @@ def load_sales():
 
 def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
-df_input = df_input.copy()
+    df_input = df_input.copy()
 
     # 1. Jika kolom 'Tanggal' masih ada, jadikan Index
     if "Tanggal" in df_input.columns:
