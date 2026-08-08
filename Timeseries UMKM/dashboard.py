@@ -83,7 +83,7 @@ def load_sales():
 
 def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
-start_date = df_input.index[0]
+    start_date = df_input.index[0]
     end_date = df_input.index[-1] + pd.Timedelta(days=7)
 
     # 1. Target & Past Covariates
