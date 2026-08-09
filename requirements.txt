@@ -10,3 +10,4 @@ google-auth
 gspread
 python-telegram-bot
 pytz
+textwrap
