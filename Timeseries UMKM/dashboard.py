@@ -108,7 +108,9 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
             df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
 
     #Resample harian
-    df_clean = df_clean[all_needed_cols].resample("D").mean().fillna(0)
+    #Membuat deret tanggal lengkap tanpa loncatan
+    full_idx = pd.date_range(start=df_clean.index.min(), end=df_clean.index.max(), freq="D")
+    df_clean = df_clean[all_needed_cols].reindex(full_idx).fillna(0)
 
     start_date = df_clean.index.min()
     
@@ -123,11 +125,10 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     )
 
     #Membuat Future Covariates sampai 60 hari ke depan
-    ext_index = pd.date_range(start=start_date, end=extended_end_date, freq="D")
-    df_covariates = load_holiday(ext_index)
+    df_covariates = load_holiday(start_date, extended_end_date)
     
     future_ts = TimeSeries.from_dataframe(
-        df_covariates, value_cols=["hari_libur"], freq="D"
+        df_covariates, value_cols=["hari_libur"], freq="D", fill_missing_dates=True, fillna_value=0
     )
 
     #Scaling
@@ -160,9 +161,6 @@ def load_holiday(_sales_index):
     df = pd.read_csv(gholiday_url, index_col='event')
 
     # Ambil tanggal awal dan akhir dari parameter yang diberikan
-    start_date = _sales_index.min()
-    end_date = _sales_index.max()
-
     ext_dates = pd.date_range(start=start_date, end=end_date, freq="D")
     
     #konversi tipe data start, end ke datetime
@@ -454,7 +452,7 @@ if button_predict and not sudah_input:
             append_data_to_gsheet(SPREADSHEET_ID, row_to_save)
             #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
             #Update Dataframe sales dengan data input hari ini
-            today_index = pd.to_datetime([tanggal_baru])
+            today_index = pd.to_datetime(tanggal_baru)
             today_data = pd.DataFrame([{
                 "Tanggal": tanggal_baru.strftime("%Y-%m-%d"),
                 "Hari": tanggal_baru.strftime("%A"),
@@ -471,13 +469,15 @@ if button_predict and not sudah_input:
                 "Terjual Sosis": input_sosis,
                 "Total Terjual": tot_sale,
                 "Sisa": sisa
-            }]).set_index("Tanggal")
+            }], index=pd.DatetimeIndex([today_index])
             
             df_sales_copy = df_sales.copy()
             df_sales_copy.index = pd.to_datetime(df_sales_copy.index)
 
             df_total = pd.concat([df_sales_copy, today_data])
-
+            df_total.index = pd.to_datetime(df_total.index).normalize()
+            df_total = df_total[~df_total.index.duplicated(keep='last')].sort_index()
+            
             #Clear cache untuk pemanggilan berikutnya
             load_sales.clear()
             st.toast(
