@@ -94,10 +94,10 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     if "Tanggal" in df_input.columns:
         df_input["Tanggal"] = pd.to_datetime(df_input["Tanggal"]).dt.normalize()
         df_input = df_input.set_index("Tanggal")
-        df_input = df_input.sort_index()
     else:
         df_input.index = pd.to_datetime(df_input.index).normalize()
 
+    df_input = df_input.sort_index()
     # 2. Pastikan semua kolom target & covariate bertipe angka murni
     all_needed_cols = list(target_cols) + list(past_cov_cols)
     for col in all_needed_cols:
@@ -107,8 +107,8 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     # menghapus duplikat DAN mengisi tanggal yang bolong/terlewat
     df_clean = df_input[all_needed_cols].resample("D").last().fillna(0)
 
-    start_date = df_clean.index[0]
-    end_date = df_clean.index[-1] + pd.Timedelta(days=14)
+    start_date = df_clean.index.min()
+    end_date = df_clean.index.max() + pd.Timedelta(days=14)
 
     # 4. Buat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D")
