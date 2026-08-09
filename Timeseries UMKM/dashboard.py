@@ -7,6 +7,7 @@ from datetime import datetime
 import holidays
 import os
 import pytz
+import textwrap
 
 from darts import TimeSeries
 from darts.models import TFTModel
@@ -643,7 +644,7 @@ if button_predict and not sudah_input:
                 #mengirim notifikasi telegram
                 #================
                 if telegram_token and chat_id:
-                    pesan_telegram= f"""
+                    pesan_telegram= textwrap.dedent(f"""
                     *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
                     Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
                     Status Toko: *{status_toko}*
@@ -671,8 +672,8 @@ if button_predict and not sudah_input:
                     - Bamer, {bamer_kg:.2f} Kg
                     - Baput, {baput_kg:.2f} Kg
 
-                    ⚡_Inference time: {duration}s_
-                    """
+                   ⚡_Inference time: {duration}s_
+                    """)
                     if send_telegram_sync(pesan_telegram):
                         st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
             except Exception as e:
