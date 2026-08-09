@@ -159,59 +159,43 @@ def load_recipe():
 def load_holiday(_sales_index):
     df = pd.read_csv(gholiday_url, index_col='event')
 
-    # Ambil tanggal awal dan akhir dari parameter yang diberikan
+    # Normalisasi tanggal input
+    start_date = pd.to_datetime(start_date).normalize()
+    end_date = pd.to_datetime(end_date).normalize()
+
     ext_dates = pd.date_range(start=start_date, end=end_date, freq="D")
     
-    #konversi tipe data start, end ke datetime
     df["start"] = pd.to_datetime(df["start"])
     df["end"] = pd.to_datetime(df["end"])
 
-    #hari libur nasional tetapi tetap beroperasi
-    workday_dates = []
-
+    # Buat set tanggal berformat datetime.date
+    workday_dates = set()
     for _, row in df[df["status"] == "workday"].iterrows():
-        workday_dates.extend(
-            pd.date_range(row["start"], row["end"])
-        )
+        if pd.notna(row["start"]) and pd.notna(row["end"]):
+            workday_dates.update(pd.date_range(row["start"], row["end"]).date)
 
-    workday_dates = pd.DatetimeIndex(workday_dates).unique()
-
-    cust_hol_date = []
+    cust_hol_dates = set()
     for _, row in df.iterrows():
-        cust_hol_date.extend(
-            pd.date_range(start=row["start"], end=row["end"])
-    )
-    
-    cust_hol_date = pd.DatetimeIndex(cust_hol_date).unique()
+        if pd.notna(row["start"]) and pd.notna(row["end"]):
+            cust_hol_dates.update(pd.date_range(row["start"], row["end"]).date)
 
-    #Mengambil hari libur nasional resmi
     years_list = [int(y) for y in ext_dates.year.unique()]
     id_holidays = holidays.country_holidays('ID', years=years_list)
 
-    #membangun dataframe covariate utama
     df_covariates = pd.DataFrame(index=ext_dates)
 
-    #Pengecekan gabungan
-    def cek_status_libur(date):
-        #tanggal libur nasional tetapi tetap beroperasi
-        if date in workday_dates:
+    def cek_status_libur(ts):
+        d = ts.date()  # KONVERSI KUNCI: Ubah Timestamp ke datetime.date
+        if d in workday_dates:
             return 0
-        
-        #cek libur nasional resmi
-        if date in id_holidays:
+        if d in id_holidays:
             return 1
-
-        #cek libur custom
-        if date in cust_hol_date:
+        if d in cust_hol_dates:
             return 1
-
-        #cek libur rutin per sekali 2 minggu
-        if date.day_of_week == 6 and date.isocalendar().week % 2 == 0:
+        if ts.day_of_week == 6 and ts.isocalendar().week % 2 == 0:
             return 1
-            
         return 0
 
-    #Mengisi kolom hari libur secara instan
     df_covariates["hari_libur"] = df_covariates.index.map(cek_status_libur)
     return df_covariates
     
