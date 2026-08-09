@@ -114,7 +114,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     
     # agar memenuhi kebutuhan output_chunk_length dari TFT Model
     max_sales_date = df_clean.index.max()
-    extended_end_date = max_sales_date + pd.Timedelta(days=90)
+    extended_end_date = max_sales_date + pd.Timedelta(days=180)
 
     #Membuat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D", fill_missing_dates=True, fillna_value=0)
@@ -160,8 +160,8 @@ def load_holiday(_sales_index):
     df = pd.read_csv(gholiday_url, index_col='event')
 
     # Ambil tanggal awal dan akhir dari parameter yang diberikan
-    start_date = _sales_index[0]
-    end_date = _sales_index[-1] + pd.Timedelta(days=7)
+    start_date = _sales_index.min()
+    end_date = _sales_index.max()
 
     ext_dates = pd.date_range(start=start_date, end=end_date, freq="D")
     
