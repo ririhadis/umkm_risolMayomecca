@@ -469,7 +469,7 @@ if button_predict and not sudah_input:
                 "Terjual Sosis": input_sosis,
                 "Total Terjual": tot_sale,
                 "Sisa": sisa
-            }], index=pd.DatetimeIndex([today_index])
+            }], index=pd.DatetimeIndex([today_index]))
             
             df_sales_copy = df_sales.copy()
             df_sales_copy.index = pd.to_datetime(df_sales_copy.index)
