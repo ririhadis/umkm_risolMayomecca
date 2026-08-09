@@ -445,6 +445,7 @@ if button_predict and not sudah_input:
             append_data_to_gsheet(SPREADSHEET_ID, row_to_save)
             #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
             #Update Dataframe sales dengan data input hari ini
+            today_index = pd.to_datetime([tanggal_baru])
             today_data = pd.DataFrame([{
                 "Tanggal": tanggal_baru.strftime("%Y-%m-%d"),
                 "Hari": tanggal_baru.strftime("%A"),
@@ -620,7 +621,7 @@ if button_predict and not sudah_input:
 
                 #Belanja Bahan Baku
                 st.markdown("##### Estimasi Kebutuhan Bahan Baku Utama")
-                b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14 = st.columns(7)
+                b1, b2, b3, b4, b5, b6, b7 = st.columns(7) 
                 b1.metric("Ayam", f"{ayam_kg:.2f} Kg")
                 b2.metric("Udang", f"{udang_kg:.2f} Kg")
                 b3.metric("Sosis", f"{sosis_pcs} pcs")
@@ -628,6 +629,8 @@ if button_predict and not sudah_input:
                 b5.metric("Telur", f"{telur_btr} butir")
                 b6.metric("Tepung", f"{tepung_kg:.2f} Kg")
                 b7.metric("Mentega", f"{mentega_kg:.2f} Kg")
+
+                b8, b9, b10, b11, b12, b13, b14 = st.columns(7)
                 b8.metric("Mayonaise", f"{mayonaise_kg:.2f} Kg")
                 b9.metric("Panir", f"{panir_kg:.2f} Kg")
                 b10.metric("Kentang_Wortel", f"{kentang_wortel_kg:.2f} Kg")
