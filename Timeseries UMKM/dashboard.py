@@ -156,7 +156,6 @@ def load_recipe():
     rasio_bahan_mean = df_rasio.mean()
     return rasio_bahan_mean
 
-@st.cache_data
 def load_holiday(_sales_index):
     df = pd.read_csv(gholiday_url, index_col='event')
 
@@ -186,7 +185,7 @@ def load_holiday(_sales_index):
     cust_hol_date = pd.DatetimeIndex(cust_hol_date).unique()
 
     #Mengambil hari libur nasional resmi
-    years_list = ext_dates.year.unique().tolist()
+    years_list = [int(y) for y in ext_dates.year.unique()]
     id_holidays = holidays.country_holidays('ID', years=years_list)
 
     #membangun dataframe covariate utama
