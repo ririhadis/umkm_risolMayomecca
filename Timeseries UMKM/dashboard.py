@@ -349,12 +349,12 @@ st.sidebar.header("📥 Input Penjualan Hari Ini")
 #SOP & Validasi tanggal
 #Mencegah menginput total penjualan harian dua kali
 #menggunakan zona waktu lokal (WIB), menghindari jam UTC server
-tz = pytz.timezone('Asia/Jakarta')
-tanggal_terakhir_db = datetime.now(tz).date()
-tanggal_hari_ini = df_sales.index.max().date()
+tz = pytz.timezone("Asia/Jakarta")
+tanggal_hari_ini = datetime.now(tz).date()
+tanggal_terakhir_db = df_sales.index.max().date()
 
 #Pengecekan apakah data hari ini sudah pernah disimpan
-sudah_input = (tanggal_terakhir_db >= tanggal_hari_ini)
+sudah_input = tanggal_terakhir_db >= tanggal_hari_ini
 
 if sudah_input:
     st.sidebar.warning(
