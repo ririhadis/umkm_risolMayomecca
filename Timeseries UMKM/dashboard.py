@@ -89,24 +89,29 @@ def load_sales():
 
 def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
-    df_input = df_input.copy()
+    df_clean = df_input.copy()
 
-    # 1. Pastikan Tanggal menjadi Index dengan tipe Datetime (Normalized)
-    if "Tanggal" in df_input.columns:
-        df_input["Tanggal"] = pd.to_datetime(df_input["Tanggal"]).dt.normalize()
-        df_input = df_input.set_index("Tanggal")
+    # 1. Pastikan Index berupa DatetimeIndex murni & di-normalize (jam 00:00:00)
+    if "Tanggal" in df_clean.columns:
+        df_clean["Tanggal"] = pd.to_datetime(df_clean["Tanggal"])
+        df_clean = df_clean.set_index("Tanggal")
     else:
-        df_input.index = pd.to_datetime(df_input.index).normalize()
+        df_clean.index = pd.to_datetime(df_clean.index)
 
-    df_input = df_input.sort_index()
+    df_clean.index = df_clean.index.normalize()
+    
+    # Hapus duplikat tanggal (ambil data inputan paling akhir jika ada tanggal sama)
+    df_clean = df_clean[~df_clean.index.duplicated(keep='last')]
+    df_clean = df_clean.sort_index()
+
     # 2. Pastikan semua kolom target & covariate bertipe angka murni
     all_needed_cols = list(target_cols) + list(past_cov_cols)
     for col in all_needed_cols:
-        if col in df_input.columns:
-            df_input[col] = pd.to_numeric(df_input[col], errors="coerce")
+        if col in df_clean.columns:
+            df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
 
-    # menghapus duplikat DAN mengisi tanggal yang bolong/terlewat
-    df_clean = df_input[all_needed_cols].resample("D").last().fillna(0)
+    # 3. Resample harian untuk mengisi tanggal bolong tanpa membuang data lama
+    df_clean = df_clean[all_needed_cols].resample("D").mean().fillna(0)
 
     start_date = df_clean.index.min()
     end_date = df_clean.index.max() + pd.Timedelta(days=14)
@@ -463,9 +468,12 @@ if button_predict and not sudah_input:
                 "Terjual Sosis": input_sosis,
                 "Total Terjual": tot_sale,
                 "Sisa": sisa
-            }], index=[tanggal_baru])
+            }]).set_index("Tanggal")
+            
+            df_sales_copy = df_sales.copy()
+            df_sales_copy.index = pd.to_datetime(df_sales_coopy.index)
 
-            df_total = pd.concat([df_sales, today_data])
+            df_total = pd.concat([df_sales_copy, today_data])
 
             #Clear cache untuk pemanggilan berikutnya
             load_sales.clear()
