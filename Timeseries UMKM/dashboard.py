@@ -91,7 +91,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
     df_clean = df_input.copy()
 
-    # 1. Pastikan Index berupa DatetimeIndex murni & di-normalize (jam 00:00:00)
+    # 1. Pastikan Index berupa DatetimeIndex murni & di-normalize
     if "Tanggal" in df_clean.columns:
         df_clean["Tanggal"] = pd.to_datetime(df_clean["Tanggal"])
         df_clean = df_clean.set_index("Tanggal")
@@ -99,22 +99,21 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         df_clean.index = pd.to_datetime(df_clean.index)
 
     df_clean.index = df_clean.index.normalize()
-    
-    # Hapus duplikat tanggal (ambil data inputan paling akhir jika ada tanggal sama)
-    df_clean = df_clean[~df_clean.index.duplicated(keep='last')]
-    df_clean = df_clean.sort_index()
+    df_clean = df_clean[~df_clean.index.duplicated(keep='last')].sort_index()
 
-    # 2. Pastikan semua kolom target & covariate bertipe angka murni
+    # 2. Pastikan kolom numerik
     all_needed_cols = list(target_cols) + list(past_cov_cols)
     for col in all_needed_cols:
         if col in df_clean.columns:
             df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
 
-    # 3. Resample harian untuk mengisi tanggal bolong tanpa membuang data lama
+    # 3. Resample harian
     df_clean = df_clean[all_needed_cols].resample("D").mean().fillna(0)
 
     start_date = df_clean.index.min()
-    end_date = df_clean.index.max() + pd.Timedelta(days=14)
+    
+    # agar memenuhi kebutuhan output_chunk_length dari TFT Model
+    end_date = df_clean.index.max() + pd.Timedelta(days=60)
 
     # 4. Buat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D")
@@ -122,7 +121,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
         df_clean, value_cols=past_cov_cols, freq="D"
     )
 
-    # 5. Future Covariates LENGKAP
+    # 5. Future Covariates LENGKAP sampai 60 hari ke depan
     ext_index = pd.date_range(start=start_date, end=end_date, freq="D")
     df_covariates = load_holiday(ext_index)
     future_ts = TimeSeries.from_dataframe(
