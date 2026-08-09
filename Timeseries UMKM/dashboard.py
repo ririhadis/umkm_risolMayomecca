@@ -462,7 +462,7 @@ if button_predict and not sudah_input:
                 "Sisa": sisa
             }], index=[tanggal_baru])
 
-            df_total = pd.concat([df_sales, today_data], ignore_index=True)
+            df_total = pd.concat([df_sales, today_data])
 
             #Clear cache untuk pemanggilan berikutnya
             load_sales.clear()
@@ -617,7 +617,7 @@ if button_predict and not sudah_input:
     )
     baput_kg=(
         stok_bahan["Bawang Putih (kg)"]
-        if "Bawang Putih (kg))" in stok_bahan
+        if "Bawang Putih (kg)" in stok_bahan
         else stok_bahan.get("Baput", 0)
     )
 
