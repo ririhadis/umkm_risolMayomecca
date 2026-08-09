@@ -471,7 +471,7 @@ if button_predict and not sudah_input:
             }]).set_index("Tanggal")
             
             df_sales_copy = df_sales.copy()
-            df_sales_copy.index = pd.to_datetime(df_sales_coopy.index)
+            df_sales_copy.index = pd.to_datetime(df_sales_copy.index)
 
             df_total = pd.concat([df_sales_copy, today_data])
 
