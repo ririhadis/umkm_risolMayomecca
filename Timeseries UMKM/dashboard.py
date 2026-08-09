@@ -486,32 +486,49 @@ if button_predict and not sudah_input:
          scaler_y,
          df_covariates,
         ) = prepare_darts_data(df_total, target_cols, ["Sisa"])
-        
-        #Model Prediction (Prediksi 1 hari ke depan n=1)
-        future_pred_scaled = model.predict(
-            n=1,
-            series=y_scaled,
-            past_covariates=past_conv_scaled,
-            future_covariates=future_conv_scaled
-        )
-            
-        #Inverse scalling & safety buffer
-        df_pred = (scaler_y.inverse_transform(future_pred_scaled).to_dataframe().clip(lower=0))
-        df_rekom_menu = (df_pred * SAFETY_BUFFER).round().astype(int)
 
-        #Mengecek besok libur/tidak
-        besok_is_libur = df_covariates.loc[besok_date, "hari_libur"] == 1
-        if besok_is_libur:
-             df_rekom_menu.loc[:, :] =0
-             status_toko = "TUTUP"
+        required_length = model.input_chunk_lenght
+
+        if len(series_scaled) < required_length:
+            st.error(
+                f"⚠️ **Gagal Melakukan Prediksi:**\n\n"
+                f"Model membutuhkan minimal **{required_length} hari** data historis berturut-turut, "
+                f"tetapi data yang dikirim saat ini hanya berisi **{len(series_scaled)} hari**."
+            )
         else:
-             status_toko = "BUKA"
+            try:
+                #Model Prediction (Prediksi 1 hari ke depan n=1)
+                future_pred_scaled = model.predict(
+                    n=1,
+                    series=y_scaled,
+                    past_covariates=(
+                        past_conv_scaled if past_conv_scaled is not None else None),
+                    future_covariates=(
+                        future_conv_scaled if future_conv_scaled is not None else None),
+                )
+            
+                #Inverse scalling & safety buffer
+                df_pred = (scaler_y.inverse_transform(future_pred_scaled).to_dataframe().clip(lower=0))
+                df_rekom_menu = (df_pred * SAFETY_BUFFER).round().astype(int)
 
-        #hitung rekomendasi Stok bahan baku
-        total_pcs_produksi = df_rekom_menu.sum(axis=1).values[0]
-        stok_bahan = (rasio_resep * total_pcs_produksi).round(2)
+                #Mengecek besok libur/tidak
+                besok_is_libur = df_covariates.loc[besok_date, "hari_libur"] == 1
+                if besok_is_libur:
+                     df_rekom_menu.loc[:, :] =0
+                     status_toko = "TUTUP"
+                else:
+                     status_toko = "BUKA"
 
-        duration = round(time.time() - start_time, 2)
+                #hitung rekomendasi Stok bahan baku
+                total_pcs_produksi = df_rekom_menu.sum(axis=1).values[0]
+                stok_bahan = (rasio_resep * total_pcs_produksi).round(2)
+
+                duration = round(time.time() - start_time, 2)
+            except Exception as e:
+                st.error(
+                f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n"
+                f"*Tips: Pastikan rentang data tidak ada tanggal yang terlewat.*"
+                )
 
     #============================
     #Tampilan Output
