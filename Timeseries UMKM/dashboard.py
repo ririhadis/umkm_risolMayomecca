@@ -114,12 +114,12 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     
     # agar memenuhi kebutuhan output_chunk_length dari TFT Model
     max_sales_date = df_clean.index.max()
-    extended_end_date = max_sales_date + pd.Timedelta(days=60)
+    extended_end_date = max_sales_date + pd.Timedelta(days=90)
 
     #Membuat TimeSeries Darts & Past Covariates
-    y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D")
+    y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D", fill_missing_dates=True, fillna_value=0)
     past_ts = TimeSeries.from_dataframe(
-        df_clean, value_cols=past_cov_cols, freq="D"
+        df_clean, value_cols=past_cov_cols, freq="D", fill_missing_dates=True, fillna_value=0
     )
 
     #Membuat Future Covariates sampai 60 hari ke depan
@@ -271,11 +271,11 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
         df_eval = df_sales.tail(60).copy()
 
         y_ts_eval = TimeSeries.from_dataframe(
-            df_eval, value_cols=target_cols, fill_missing_dates=True, freq="D"
+            df_eval, value_cols=target_cols, fill_missing_dates=True, freq="D", fillna_value=0
         )
 
         past_cov_ts = TimeSeries.from_dataframe(
-            df_eval, value_cols=["Sisa"], fill_missing_dates=True, freq="D"
+            df_eval, value_cols=["Sisa"], fill_missing_dates=True, freq="D", fillna_value=0
         )
 
         eval_ext_index = pd.date_range(
