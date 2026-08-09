@@ -160,12 +160,8 @@ def load_holiday(_sales_index):
     df = pd.read_csv(gholiday_url, index_col='event')
 
     # Ambil tanggal awal dan akhir dari parameter yang diberikan
-    if isinstance(_sales_index, pd.DatetimeIndex):
-        start_date = _sales_index[0]
-        end_date = _sales_index[-1]
-    else:
-        start_date = _sales_index[0]
-        end_date = _sales_index[-1] + pd.Timedelta(days=7)
+    start_date = _sales_index[0]
+    end_date = _sales_index[-1] + pd.Timedelta(days=7)
 
     ext_dates = pd.date_range(start=start_date, end=end_date, freq="D")
     
