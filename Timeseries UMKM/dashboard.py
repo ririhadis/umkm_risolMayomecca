@@ -91,7 +91,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     """Helper function untuk konversi DataFrame ke TimeSeries & Scaler Darts"""
     df_clean = df_input.copy()
 
-    # 1. Pastikan Index berupa DatetimeIndex murni & di-normalize
+    # Memastikan Index berupa DatetimeIndex murni & di-normalize
     if "Tanggal" in df_clean.columns:
         df_clean["Tanggal"] = pd.to_datetime(df_clean["Tanggal"])
         df_clean = df_clean.set_index("Tanggal")
@@ -101,34 +101,36 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     df_clean.index = df_clean.index.normalize()
     df_clean = df_clean[~df_clean.index.duplicated(keep='last')].sort_index()
 
-    # 2. Pastikan kolom numerik
+    # Memastikan kolom numerik
     all_needed_cols = list(target_cols) + list(past_cov_cols)
     for col in all_needed_cols:
         if col in df_clean.columns:
             df_clean[col] = pd.to_numeric(df_clean[col], errors="coerce")
 
-    # 3. Resample harian
+    #Resample harian
     df_clean = df_clean[all_needed_cols].resample("D").mean().fillna(0)
 
     start_date = df_clean.index.min()
     
     # agar memenuhi kebutuhan output_chunk_length dari TFT Model
-    end_date = df_clean.index.max() + pd.Timedelta(days=60)
+    max_sales_date = df_clean.index.max()
+    extended_end_date = max_sales_date + pd.Timedelta(days=60)
 
-    # 4. Buat TimeSeries Darts & Past Covariates
+    #Membuat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D")
     past_ts = TimeSeries.from_dataframe(
         df_clean, value_cols=past_cov_cols, freq="D"
     )
 
-    # 5. Future Covariates LENGKAP sampai 60 hari ke depan
-    ext_index = pd.date_range(start=start_date, end=end_date, freq="D")
+    #Membuat Future Covariates sampai 60 hari ke depan
+    ext_index = pd.date_range(start=start_date, end=extended_end_date, freq="D")
     df_covariates = load_holiday(ext_index)
+    
     future_ts = TimeSeries.from_dataframe(
         df_covariates, value_cols=["hari_libur"], freq="D"
     )
 
-    # 6. Scaling
+    #Scaling
     scaler_y, scaler_past, scaler_future = Scaler(), Scaler(), Scaler()
     y_scaled = scaler_y.fit_transform(y_ts)
     past_scaled = scaler_past.fit_transform(past_ts).slice_intersect(y_scaled)
@@ -270,7 +272,7 @@ def load_metrics(_y_ts, _pred_terjual, target_cols):
 @st.cache_data(ttl=3600)
 def compute_evaluation_metrics(_model, df_sales, target_cols):
     try:
-        df_eval = df_sales.tail(30).copy()
+        df_eval = df_sales.tail(60).copy()
 
         y_ts_eval = TimeSeries.from_dataframe(
             df_eval, value_cols=target_cols, fill_missing_dates=True, freq="D"
@@ -280,7 +282,13 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
             df_eval, value_cols=["Sisa"], fill_missing_dates=True, freq="D"
         )
 
-        df_cov = load_holiday(df_eval.index)
+        eval_ext_index = pd.date_range(
+            start = df_eval.index.min(),
+            end= df_eval.index.max() + pd.Timedelta(days=30),
+            freq= "D"
+        )
+        df_cov = load_holiday(eval_ext_index)
+        
         future_cov_ts = TimeSeries.from_dataframe(
             df_cov,
             value_cols=["hari_libur"],
