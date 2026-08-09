@@ -487,13 +487,13 @@ if button_predict and not sudah_input:
          df_covariates,
         ) = prepare_darts_data(df_total, target_cols, ["Sisa"])
 
-        required_length = model.input_chunk_lenght
+        required_length = model.input_chunk_length
 
-        if len(series_scaled) < required_length:
+        if len(y_scaled) < required_length:
             st.error(
                 f"⚠️ **Gagal Melakukan Prediksi:**\n\n"
                 f"Model membutuhkan minimal **{required_length} hari** data historis berturut-turut, "
-                f"tetapi data yang dikirim saat ini hanya berisi **{len(series_scaled)} hari**."
+                f"tetapi data yang dikirim saat ini hanya berisi **{len(y_scaled)} hari**."
             )
         else:
             try:
@@ -526,8 +526,8 @@ if button_predict and not sudah_input:
                 duration = round(time.time() - start_time, 2)
             except Exception as e:
                 st.error(
-                f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n"
-                f"*Tips: Pastikan rentang data tidak ada tanggal yang terlewat.*"
+                    f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n"
+                    f"*Tips: Pastikan rentang data tidak ada tanggal yang terlewat.*"
                 )
 
     #============================
