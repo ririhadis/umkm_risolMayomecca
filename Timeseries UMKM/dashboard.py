@@ -156,11 +156,11 @@ def load_recipe():
     rasio_bahan_mean = df_rasio.mean()
     return rasio_bahan_mean
 
-def load_holiday(_sales_index):
+def load_holiday(start_date, end_date):
     """Membaca data hari libur nasional dan custom holiday"""
     df = pd.read_csv(gholiday_url, index_col='event')
 
-    #Konversi ke Timestamp
+    # Konversi ke Timestamp
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
 
@@ -190,7 +190,7 @@ def load_holiday(_sales_index):
 
     def cek_status_libur(ts):
         date_str = ts.strftime("%Y-%m-%d")
-        d = ts.date()  # KONVERSI KUNCI: Ubah Timestamp ke datetime.date
+        d = ts.date()
         if date_str in workday_dates:
             return 0
         if d in id_holidays or date_str in id_holidays:
