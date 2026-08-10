@@ -117,7 +117,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     
     # agar memenuhi kebutuhan output_chunk_length dari TFT Model
     max_sales_date = df_clean.index.max()
-    extended_end_date = max(max_sales_date + pd.Timedelta(days=180), pd.Timestamp(df_clean.index.max()) + pd.Timedelta(days=30)
+    extended_end_date = max(max_sales_date + pd.Timedelta(days=180), pd.Timestamp(df_clean.index.max()) + pd.Timedelta(days=30))
 
     #Membuat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D", fill_missing_dates=True, fillna_value=0)
