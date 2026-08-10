@@ -92,11 +92,12 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     df_clean = df_input.copy()
 
     # Memastikan Index berupa DatetimeIndex murni & di-normalize
-    if "Tanggal" in df_clean.columns:
-        df_clean["Tanggal"] = pd.to_datetime(df_clean["Tanggal"])
-        df_clean = df_clean.set_index("Tanggal")
-    else:
-        df_clean.index = pd.to_datetime(df_clean.index)
+    if not isinstance(df_clean.index, pd.DatetimeIndex):
+        if "Tanggal" in df_clean.columns:
+            df_clean["Tanggal"] = pd.to_datetime(df_clean["Tanggal"])
+            df_clean = df_clean.set_index("Tanggal")
+        else:
+            df_clean.index = pd.to_datetime(df_clean.index)
 
     df_clean.index = df_clean.index.normalize()
     df_clean = df_clean[~df_clean.index.duplicated(keep='last')].sort_index()
@@ -438,9 +439,8 @@ if button_predict and not sudah_input:
             append_data_to_gsheet(SPREADSHEET_ID, row_to_save)
             #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
             #Update Dataframe sales dengan data input hari ini
-            today_index = pd.to_datetime(tanggal_baru)
+            today_index = pd.to_datetime(tanggal_baru).normalize()
             today_data = pd.DataFrame([{
-                "Tanggal": tanggal_baru.strftime("%Y-%m-%d"),
                 "Hari": tanggal_baru.strftime("%A"),
                 "Produksi Ayam": prod_ayam,
                 "Produksi Udang": prod_udang,
@@ -455,13 +455,15 @@ if button_predict and not sudah_input:
                 "Terjual Sosis": input_sosis,
                 "Total Terjual": tot_sale,
                 "Sisa": sisa
-            }], index=pd.DatetimeIndex([today_index]))
+             }], index=[today_index])
             
             df_sales_copy = df_sales.copy()
-            df_sales_copy.index = pd.to_datetime(df_sales_copy.index)
+            if "Tanggal" in df_sales_copy.columns:
+                df_sales_copy= df_sales_copy.drop(columns=["Tanggal"])
+
+            df_sales_copy.index = pd.to_datetime(df_sales_copy.index).normalize()
 
             df_total = pd.concat([df_sales_copy, today_data])
-            df_total.index = pd.to_datetime(df_total.index).normalize()
             df_total = df_total[~df_total.index.duplicated(keep='last')].sort_index()
             
             #Clear cache untuk pemanggilan berikutnya
