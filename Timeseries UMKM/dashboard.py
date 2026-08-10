@@ -117,7 +117,7 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     
     # agar memenuhi kebutuhan output_chunk_length dari TFT Model
     max_sales_date = df_clean.index.max()
-    extended_end_date = max_sales_date + pd.Timedelta(days=180)
+    extended_end_date = max(max_sales_date + pd.Timedelta(days=180), pd.Timestamp(df_clean.index.max()) + pd.Timedelta(days=30)
 
     #Membuat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D", fill_missing_dates=True, fillna_value=0)
@@ -307,13 +307,11 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
 #Helper telegram
 def send_telegram_sync(message):
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        bot = Bot(token=telegram_token)
-        loop.run_until_complete(
-            bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
-        )
-        loop.close()
+        async def _send():
+            bot = Bot(token = telegram_token)
+            await bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+
+        asyncio.run(_send())
         return True
 
     except Exception as e:
@@ -513,8 +511,16 @@ if button_predict and not sudah_input:
                 df_pred = (scaler_y.inverse_transform(future_pred_scaled).to_dataframe().clip(lower=0))
                 df_rekom_menu = (df_pred * SAFETY_BUFFER).round().astype(int)
 
+                #mengkonveris besok_date ke Timestamp
+                besok_timestamp = pd.Timestamp(besok_date).normalize()
+                
                 #Mengecek besok libur/tidak
-                besok_is_libur = df_covariates.loc[besok_date, "hari_libur"] == 1
+                besok_timestamp = pd.Timestamp(besok_date).normalize()
+                if besok_timestamp in df_covariates.index:
+                    besok_is_libur = df_covariates.loc[besok_timestamp, "hari_libur" == 1]
+                else:
+                    besok_is_libur =False
+                    
                 if besok_is_libur:
                      df_rekom_menu.loc[:, :] =0
                      status_toko = "TUTUP"
@@ -680,6 +686,9 @@ if button_predict and not sudah_input:
                     f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n*Tips:"
                     " Pastikan rentang data tidak ada tanggal yang terlewat.*"
                 )
+
+    time.sleep(1)
+    st.rerun()
 #========
 #History Chart
 #========
