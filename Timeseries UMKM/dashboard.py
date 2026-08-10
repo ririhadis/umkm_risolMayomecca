@@ -59,9 +59,9 @@ def append_data_to_gsheet(spreadsheets_id, new_row_data):
         for item in new_row_data:
             if isinstance(item, (pd.Timestamp, pd.DatetimeIndex)):
                 formatted_row.append(item.strftime("%Y-%m-%d"))
-            # PERBAIKAN: Tambahkan (int, float) Python standar
+            # Tambahkan (int, float) Python standar
             elif isinstance(item, (int, float, np.integer, np.floating)):
-                # Kirim sebagai angka asli (bukan string)
+                # Kirim sebagai angka asli
                 formatted_row.append(
                     item.item() if hasattr(item, "item") else item
                 )
@@ -157,40 +157,45 @@ def load_recipe():
     return rasio_bahan_mean
 
 def load_holiday(_sales_index):
+    """Membaca data hari libur nasional dan custom holiday"""
     df = pd.read_csv(gholiday_url, index_col='event')
 
-    # Normalisasi tanggal input
-    start_date = pd.to_datetime(start_date).normalize()
-    end_date = pd.to_datetime(end_date).normalize()
+    #Konversi ke Timestamp
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
 
     ext_dates = pd.date_range(start=start_date, end=end_date, freq="D")
     
     df["start"] = pd.to_datetime(df["start"])
     df["end"] = pd.to_datetime(df["end"])
 
-    # Buat set tanggal berformat datetime.date
+    # Set tanggal berformat datetime.date
     workday_dates = set()
     for _, row in df[df["status"] == "workday"].iterrows():
         if pd.notna(row["start"]) and pd.notna(row["end"]):
-            workday_dates.update(pd.date_range(row["start"], row["end"]).date)
+            workday_dates.update(pd.date_range(row["start"], row["end"]).strftime("%Y-%m-%d"))
 
     cust_hol_dates = set()
     for _, row in df.iterrows():
         if pd.notna(row["start"]) and pd.notna(row["end"]):
-            cust_hol_dates.update(pd.date_range(row["start"], row["end"]).date)
+            cust_hol_dates.update(pd.date_range(row["start"], row["end"]).strftime("%Y-%m-%d"))
 
     years_list = [int(y) for y in ext_dates.year.unique()]
-    id_holidays = holidays.country_holidays('ID', years=years_list)
-
+    try:
+        id_holidays = holidays.country_holidays('ID', years=years_list)
+    except Exception:
+        id_holidays = holidays.ID(years=years_list)
+    
     df_covariates = pd.DataFrame(index=ext_dates)
 
     def cek_status_libur(ts):
+        date_str = ts.strftime("%Y-%m-%d")
         d = ts.date()  # KONVERSI KUNCI: Ubah Timestamp ke datetime.date
-        if d in workday_dates:
+        if date_str in workday_dates:
             return 0
-        if d in id_holidays:
+        if d in id_holidays or date_str in id_holidays:
             return 1
-        if d in cust_hol_dates:
+        if date_str in cust_hol_dates:
             return 1
         if ts.day_of_week == 6 and ts.isocalendar().week % 2 == 0:
             return 1
@@ -259,12 +264,10 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
             df_eval, value_cols=["Sisa"], fill_missing_dates=True, freq="D", fillna_value=0
         )
 
-        eval_ext_index = pd.date_range(
-            start = df_eval.index.min(),
-            end= df_eval.index.max() + pd.Timedelta(days=30),
-            freq= "D"
-        )
-        df_cov = load_holiday(eval_ext_index)
+        eval_start = df_eval.index.min()
+        eval_end = df_eval.index.max() + pd.Timedelta(days=30)
+        
+        df_cov = load_holiday(eval_start, eval_end)
         
         future_cov_ts = TimeSeries.from_dataframe(
             df_cov,
