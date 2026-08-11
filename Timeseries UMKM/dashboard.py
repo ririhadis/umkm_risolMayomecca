@@ -588,7 +588,7 @@ if should_run_prediction:
                 #===============================
                 #Rekomendasi produk (Besst Seller dan Slow Mover
                 #===============================
-                pred_series = df_rekom_menu.iloc[0].copy()
+                pred_series = df_sale.iloc[0].copy()
                 pred_series.index = pred_series.index.str.replace("Terjual ", "")
                 sorted_menu = pred_series.sort_values(ascending=False)
 
