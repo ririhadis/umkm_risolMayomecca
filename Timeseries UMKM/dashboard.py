@@ -693,11 +693,11 @@ if should_run_prediction:
                 b1, b2, b3, b4 = st.columns(4)
                 b1.metric("Ayam", f"{(ayam_kg/1000):.2f} Kg")
                 b2.metric("Udang", f"{(udang_kg/1000):.2f} Kg")
-                b3.metric("Sosis", f"{int(sosis_pcs)} Pcs")
+                b3.metric("Sosis", f"{int(sosis_pcs)/10} bungkus")
                 b4.metric("Keju", f"{(keju_kg/1000):.2f} Kg")
 
                 b5, b6, b7, b8 = st.columns(4)
-                b5.metric("Telur", f"{int(telur_btr)} Butir")
+                b5.metric("Telur", f"{int(telur_btr)/30} papan")
                 b6.metric("Tepung", f"{(tepung_kg/1000):.2f} Kg")
                 b7.metric("Mentega", f"{(mentega_kg/1000):.2f} Kg")
                 b8.metric("Mayonaise", f"{(mayonaise_kg/1000):.2f} Kg")
