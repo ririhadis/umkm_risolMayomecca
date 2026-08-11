@@ -554,7 +554,7 @@ if should_run_prediction:
                 
                 #Mengecek besok libur/tidak
                 if besok_timestamp in df_covariates.index:
-                    besok_is_libur = df_covariates.loc[besok_timestamp, "hari_libur" == 1]
+                    besok_is_libur = df_covariates.loc[besok_timestamp, "hari_libur"] == 1
                 else:
                     besok_is_libur =False
                     
@@ -748,11 +748,12 @@ if should_run_prediction:
                     " Pastikan rentang data tidak ada tanggal yang terlewat.*"
                 )
 
-    time.sleep(1)
-    st.rerun()
 #========
 #History Chart
 #========
 st.divider()
 st.subheader("📈 Trend Penjualan Historis (30 Hari Terakhir)")
 st.line_chart(df_sales[target_cols].tail(30))
+
+time.sleep(1)
+st.rerun()
