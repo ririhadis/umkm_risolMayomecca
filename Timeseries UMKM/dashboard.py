@@ -409,83 +409,70 @@ else:
 #=============================
 #Forecasting Logic
 #============================
-if button_predict and not sudah_input:
-    start_time = time.time()
+should_run_prediction = (button_predict and not sudah_input) or sudah_input
 
-    #menyimpan ke google sheets
-    with st.spinner("Menyimpan data hari ini ke Google Sheets"):
-        row_to_save= [
-            tanggal_baru.strftime("%Y-%m-%d"),
-            tanggal_baru.strftime("%A"), #untuk mendapatkan nama hari
-            prod_ayam,
-            prod_udang,
-            prod_keju,
-            prod_telur,
-            prod_sosis,
-            tot_prod,
-            input_ayam,
-            input_udang,
-            input_keju,
-            input_telur,
-            input_sosis,
-            tot_sale,
-            sisa
-        ]
+if should_run_prediction:
+    if button_predict and not sudah_input:
+        start_time = time.time()
 
-        try:
-            #proses simpan data ke googlesheets
-            append_data_to_gsheet(SPREADSHEET_ID, row_to_save)
-            #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
-            #Update Dataframe sales dengan data input hari ini
-            today_index = pd.to_datetime(tanggal_baru).normalize()
-            today_data = pd.DataFrame([{
-                "Hari": tanggal_baru.strftime("%A"),
-                "Produksi Ayam": prod_ayam,
-                "Produksi Udang": prod_udang,
-                "Produksi Keju": prod_keju,
-                "Produksi Telur": prod_telur,
-                "Produksi Sosis": prod_sosis,
-                "Total Produksi": tot_prod,
-                "Terjual Ayam": input_ayam,
-                "Terjual Udang": input_udang,
-                "Terjual Keju": input_keju,
-                "Terjual Telur": input_telur,
-                "Terjual Sosis": input_sosis,
-                "Total Terjual": tot_sale,
-                "Sisa": sisa
-             }], index=[today_index])
+        #menyimpan ke google sheets
+        with st.spinner("Menyimpan data hari ini ke Google Sheets"):
+            row_to_save= [
+                tanggal_baru.strftime("%Y-%m-%d"),
+                tanggal_baru.strftime("%A"), #untuk mendapatkan nama hari
+                prod_ayam, prod_udang, prod_keju, prod_telur, prod_sosis, tot_prod,
+                input_ayam, input_udang, input_keju, input_telur, input_sosis, tot_sale,
+                sisa
+            ]
+            try:
+                #proses simpan data ke googlesheets
+                append_data_to_gsheet(SPREADSHEET_ID, row_to_save)
+                #DataFrmae lokal instan agar menghindari delay ekspor CSV dari Google Sheet
+                #Update Dataframe sales dengan data input hari ini
+                today_index = pd.to_datetime(tanggal_baru).normalize()
+                today_data = pd.DataFrame([{
+                    "Hari": tanggal_baru.strftime("%A"),
+                    "Produksi Ayam": prod_ayam, "Produksi Udang": prod_udang,
+                    "Produksi Keju": prod_keju, "Produksi Telur": prod_telur,
+                    "Produksi Sosis": prod_sosis, "Total Produksi": tot_prod,
+                    "Terjual Ayam": input_ayam, "Terjual Udang": input_udang,
+                    "Terjual Keju": input_keju, "Terjual Telur": input_telur,
+                    "Terjual Sosis": input_sosis, "Total Terjual": tot_sale,
+                    "Sisa": sisa
+                }], index=[today_index])
+                       
+                df_sales_copy = df_sales.copy()
+                if "Tanggal" in df_sales_copy.columns:
+                    df_sales_copy= df_sales_copy.drop(columns=["Tanggal"])
+
+                df_sales_copy.index = pd.to_datetime(df_sales_copy.index).normalize()
+
+                df_sales = pd.concat([df_sales_copy, today_data])
+                df_sales = df_sales[~df_sales.index.duplicated(keep='last')].sort_index()
             
-            df_sales_copy = df_sales.copy()
-            if "Tanggal" in df_sales_copy.columns:
-                df_sales_copy= df_sales_copy.drop(columns=["Tanggal"])
-
-            df_sales_copy.index = pd.to_datetime(df_sales_copy.index).normalize()
-
-            df_total = pd.concat([df_sales_copy, today_data])
-            df_total = df_total[~df_total.index.duplicated(keep='last')].sort_index()
-            
-            #Clear cache untuk pemanggilan berikutnya
-            load_sales.clear()
-            st.toast(
-                "Data hari ini berhasil tersimpan di Google Sheet!", icon="💾"
-            )
-        except Exception as e:
-            st.error(
-                f"Gagal menyimpan data ke Google Sheets! Pastikan st.secrets sudah dikonfigurasi. Detail Error: {e}"
-            )
-            st.stop()
+                #Clear cache untuk pemanggilan berikutnya
+                load_sales.clear()
+                st.toast(
+                    "Data hari ini berhasil tersimpan di Google Sheet!", icon="💾"
+                )
+            except Exception as e:
+                st.error(
+                    f"Gagal menyimpan data ke Google Sheets! Pastikan st.secrets sudah dikonfigurasi. Detail Error: {e}"
+                )
+                st.stop()
 
     # Jalankan prediksi untuk besok
     with st.spinner("Perhitungan estimasi demand dan bahan baku"):
-        besok_date = tanggal_baru + pd.Timedelta(days=1)
+        besok_date = df_sales.index.max().date() + pd.Timedelta(days=1)
 
         #memnaggil fungsi helper dasrts
-        (y_scaled,
-         past_conv_scaled,
-         future_conv_scaled,
-         scaler_y,
-         df_covariates,
-        ) = prepare_darts_data(df_total, target_cols, ["Sisa"])
+        (
+            y_scaled,
+            past_conv_scaled,
+            future_conv_scaled,
+            scaler_y,
+            df_covariates,
+        ) = prepare_darts_data(df_sales, target_cols, ["Sisa"])
 
         required_length = model.input_chunk_length
 
@@ -506,7 +493,7 @@ if button_predict and not sudah_input:
                     future_covariates=(
                         future_conv_scaled if future_conv_scaled is not None else None),
                 )
-            
+                
                 #Inverse scalling & safety buffer
                 df_pred = (scaler_y.inverse_transform(future_pred_scaled).to_dataframe().clip(lower=0))
                 df_rekom_menu = (df_pred * SAFETY_BUFFER).round().astype(int)
@@ -515,24 +502,33 @@ if button_predict and not sudah_input:
                 besok_timestamp = pd.Timestamp(besok_date).normalize()
                 
                 #Mengecek besok libur/tidak
-                besok_timestamp = pd.Timestamp(besok_date).normalize()
                 if besok_timestamp in df_covariates.index:
                     besok_is_libur = df_covariates.loc[besok_timestamp, "hari_libur" == 1]
                 else:
                     besok_is_libur =False
                     
                 if besok_is_libur:
-                     df_rekom_menu.loc[:, :] =0
-                     status_toko = "TUTUP"
+                    df_rekom_menu.loc[:, :] =0
+                    status_toko = "TUTUP"
                 else:
-                     status_toko = "BUKA"
+                    status_toko = "BUKA"
 
                 #hitung rekomendasi Stok bahan baku
                 total_pcs_produksi = df_rekom_menu.sum(axis=1).values[0]
                 stok_bahan = (rasio_resep * total_pcs_produksi).round(2)
 
-                duration = round(time.time() - start_time, 2)
+                #===============================
+                #Rekomendasi produk (Besst Seller dan Slow Mover
+                #===============================
+                pred_series = df_rekom_menu.iloc[0].copy()
+                pred_series.index = pred_series.index.str.replace("Terjual ", "")
+                sorted_menu = pred_series.sort_values(ascending=False)
 
+                best_seller = sorted_menu.index[0]
+                best_seller_val = sorted_menua.iloc[0]
+                slow_mover = sorted_menu.index[-1]
+                slow_mover_val = sorted_menu.iloc[-1]
+                
                 #============================
                 #Tampilan Output
                 #============================
@@ -540,7 +536,7 @@ if button_predict and not sudah_input:
                 st.subheader(
                     f"Rekomendasi Produksi & Bahan Baku ({besok_date.strftime('%d %B %Y')})"
                 )
-                st.caption(f"Status Toko: **{status_toko}** | AI Inference: {duration} detik")
+                st.caption(f"Status Toko: **{status_toko}**")
 
                 #Grid 1: Produksi Menu(Pcs)
                 st.markdown("##### Rekomendasi Produksi Menu (Pcs)")
@@ -551,6 +547,22 @@ if button_predict and not sudah_input:
                 m4.metric("Telur", f"{df_rekom_menu['Terjual Telur'].iloc[0]} pcs")
                 m5.metric("Sosis", f"{df_rekom_menu['Terjual Sosis'].iloc[0]} pcs")
 
+                #Grid 2: Rekomendasi Produk terjual
+                st.markdown("#### Analisis dan Rekomendasi Penjualan Produk")
+                col_rec1, col_rec2 = st.column(2)
+                with col_rec1:
+                    st.success(
+                        f"🔥 **Best Seller:** **{best_seller}** ({best_seller_val}"
+                        " pcs)\n\n*Saran:* Pastikan stok bahan baku utama varian ini"
+                        " aman dan posisikan di etalase terdepan."
+                    )
+                with col_rec2:
+                    st.warning(
+                        f"📉 **Slow Mover:** **{slow_mover}** ({slow_mover_val}"
+                        " pcs)\n\n*Saran:* Hindari overproduksi awal dan buat paket"
+                        " bundling/promo jika persediaan berlebih."
+                    )
+                    
                 st.divider()
              
                 #Ekstraksi nilai bahan baku secara amana dari Pandas Series/Dictionary
@@ -625,7 +637,7 @@ if button_predict and not sudah_input:
                     else stok_bahan.get("Baput", 0)
                 )
 
-                #Belanja Bahan Baku
+                #Grid 3: Belanja Bahan Baku
                 st.markdown("##### Estimasi Kebutuhan Bahan Baku Utama")
                 b1, b2, b3, b4, b5, b6, b7 = st.columns(7) 
                 b1.metric("Ayam", f"{ayam_kg:.2f} Kg")
@@ -648,37 +660,35 @@ if button_predict and not sudah_input:
                 #================
                 #mengirim notifikasi telegram
                 #================
-                if telegram_token and chat_id:
+                if button_predict and telegram_token and chat_id:
                     pesan_telegram= textwrap.dedent(f"""
-                    *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
-                    Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
-                    Status Toko: *{status_toko}*
+                        *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
+                        Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
+                        Status Toko: *{status_toko}*
 
-                    *Rekomendasi Produksi Menu:*
-                    - Ayam: {df_rekom_menu['Terjual Ayam'].iloc[0]} pcs
-                    - Udang: {df_rekom_menu['Terjual Udang'].iloc[0]} pcs
-                    - Keju: {df_rekom_menu['Terjual Keju'].iloc[0]} pcs
-                    - Telur: {df_rekom_menu['Terjual Telur'].iloc[0]} pcs
-                    - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
+                        *Rekomendasi Produksi Menu:*
+                        - Ayam: {df_rekom_menu['Terjual Ayam'].iloc[0]} pcs
+                        - Udang: {df_rekom_menu['Terjual Udang'].iloc[0]} pcs
+                        - Keju: {df_rekom_menu['Terjual Keju'].iloc[0]} pcs
+                        - Telur: {df_rekom_menu['Terjual Telur'].iloc[0]} pcs
+                        - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
 
-                    *Estimasi Belanja Bahan:*
-                    - Ayam, {ayam_kg:.2f} Kg
-                    - Udang, {udang_kg:.2f} Kg
-                    - Sosis, {sosis_pcs} pcs
-                    - Keju, {keju_kg:.2f} Kg
-                    - Telur, {telur_btr} butir
-                    - Tepung, {tepung_kg:.2f} Kg
-                    - Mentega, {mentega_kg:.2f} Kg
-                    - Mayonaise, {mayonaise_kg:.2f} Kg
-                    - Panir, {panir_kg:.2f} Kg
-                    - Kentang_Wortel, {kentang_wortel_kg:.2f} Kg
-                    - Seledri, {seledri_kg:.2f} Kg
-                    - Daun_bawang, {daun_bawang_kg:.2f} Kg
-                    - Bamer, {bamer_kg:.2f} Kg
-                    - Baput, {baput_kg:.2f} Kg
-
-                   ⚡_Inference time: {duration}s_
-                    """)
+                        *Estimasi Belanja Bahan:*
+                        - Ayam, {ayam_kg:.2f} Kg
+                        - Udang, {udang_kg:.2f} Kg
+                        - Sosis, {sosis_pcs} pcs
+                        - Keju, {keju_kg:.2f} Kg
+                        - Telur, {telur_btr} butir
+                        - Tepung, {tepung_kg:.2f} Kg
+                        - Mentega, {mentega_kg:.2f} Kg
+                        - Mayonaise, {mayonaise_kg:.2f} Kg
+                        - Panir, {panir_kg:.2f} Kg
+                        - Kentang_Wortel, {kentang_wortel_kg:.2f} Kg
+                        - Seledri, {seledri_kg:.2f} Kg
+                        - Daun_bawang, {daun_bawang_kg:.2f} Kg
+                        - Bamer, {bamer_kg:.2f} Kg
+                        - Baput, {baput_kg:.2f} Kg
+                        """)
                     if send_telegram_sync(pesan_telegram):
                         st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
             except Exception as e:
