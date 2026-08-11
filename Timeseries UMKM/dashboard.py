@@ -756,9 +756,9 @@ if should_run_prediction:
                     *Estimasi Belanja Bahan:*
                     - Ayam, {ayam_kg/1000:.2f} Kg
                     - Udang, {udang_kg/1000:.2f} Kg
-                    - Sosis, {int(sosis_pcs):.2f} pcs
+                    - Sosis, {int(sosis_pcs)/10:.2f} pcs
                     - Keju, {keju_kg/1000:.2f} Kg
-                    - Telur, {int(telur_btr):.2f} butir
+                    - Telur, {int(telur_btr)/30:.2f} butir
                     - Tepung, {tepung_kg/1000:.2f} Kg
                     - Mentega, {mentega_kg/1000:.2f} Kg
                     - Mayonaise, {mayonaise_kg/1000:.2f} Kg
