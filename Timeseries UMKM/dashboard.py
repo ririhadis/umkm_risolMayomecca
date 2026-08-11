@@ -732,7 +732,7 @@ if should_run_prediction:
                 #================
                 #mengirim notifikasi telegram
                 #================
-                if button_predict and telegram_token and chat_id:
+                if button_predict::
                     pesan_telegram= textwrap.dedent(f"""
                         *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
                         Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
@@ -761,7 +761,7 @@ if should_run_prediction:
                         - Bamer, {bamer_kg/1000:.2f} Kg
                         - Baput, {baput_kg/1000:.2f} Kg
                         """)
-                    if send_telegram_sync(pesan_telegram):
+                    if send_telegram_message(pesan_telegram):
                         st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
             except Exception as e:
                 st.error(
