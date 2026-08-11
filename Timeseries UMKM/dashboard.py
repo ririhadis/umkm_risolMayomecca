@@ -594,16 +594,16 @@ if should_run_prediction:
                 stok_bahan = (rasio_resep * total_pcs_produksi).round(2)
 
                 #===============================
-                #Rekomendasi produk (Besst Seller dan Slow Mover
+                #Rekomendasi produk (Besst Seller dan Slow Mover) dari 30 hari terakhir
                 #===============================
-                pred_series = df_rekom_menu.iloc[0].copy()
-                pred_series.index = pred_series.index.str.replace("Terjual ", "")
-                sorted_menu = pred_series.sort_values(ascending=False)
+                sum_30_days = df_sales[target_cols].tail(30).sum()
+                sum_30_days.index = sum_30_days.index.str.replace("Terjual ", "")
+                sorted_historis = sum_30_days.sort_values(ascending=False)
 
-                best_seller = sorted_menu.index[0]
-                best_seller_val = sorted_menu.iloc[0]
-                slow_mover = sorted_menu.index[-1]
-                slow_mover_val = sorted_menu.iloc[-1]
+                best_seller = sorted_historis.index[0]
+                best_seller_val = int(sorted_historis.iloc[0])
+                slow_mover = sorted_historis.index[-1]
+                slow_mover_val = int(sorted_historis.iloc[-1])
                 
                 #============================
                 #Tampilan Output
@@ -628,13 +628,13 @@ if should_run_prediction:
                 col_rec1, col_rec2 = st.columns(2)
                 with col_rec1:
                     st.success(
-                        f"🔥 **Best Seller:** **{best_seller}** ({best_seller_val}"
+                        f"🔥 **Best Seller 30 hari terkahir:** **{best_seller}** ({best_seller_val}"
                         " pcs)\n\n*Saran:* Pastikan stok bahan baku utama varian ini"
                         " aman dan posisikan di etalase terdepan."
                     )
                 with col_rec2:
                     st.warning(
-                        f"📉 **Slow Mover:** **{slow_mover}** ({slow_mover_val}"
+                        f"📉 **Slow Mover 30 hari terakhir:** **{slow_mover}** ({slow_mover_val}"
                         " pcs)\n\n*Saran:* Hindari overproduksi awal dan buat paket"
                         " bundling/promo jika persediaan berlebih."
                     )
