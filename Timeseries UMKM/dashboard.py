@@ -463,7 +463,7 @@ if "telegram_sent" not in st.session_state:
 
 #reset statu menjadi False jika tombol Simpan/Prediksi di klik
 if button_predict:
-    st.session_date.telegram_sent = False
+    st.session_state.telegram_sent = False
 
 #=============================
 #Forecasting Logic
