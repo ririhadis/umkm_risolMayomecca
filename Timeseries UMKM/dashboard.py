@@ -327,15 +327,18 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
         
 #Helper telegram
 def send_telegram_message(message):
-    if not telegram_token or not chat_id:
+    token = st.secrets.get("TELEGRAM_TOKEN", "")
+    c_id = st.secrets.get("CHAT_ID", "")
+
+    if not token or not c_id:
         st.error("❌ Token Telegram atau Chat ID tidak ditemukan di Secrets!")
         return False
 
-    url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
-        "chat_id": chat_id,
+        "chat_id": c_id,
         "text": message,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",  # Memakai HTML agar tidak mudah error sintaks
     }
 
     try:
@@ -344,12 +347,14 @@ def send_telegram_message(message):
         if response.status_code == 200 and res_data.get("ok"):
             return True
         else:
-            st.error(f"❌ Gagal dari Telegram API: {res_data}")
+            st.error(
+                f"❌ Telegram API Error: {res_data.get('description', res_data)}"
+            )
             return False
     except Exception as e:
-        st.error(f"❌ Error koneksi Telegram: {e}")
+        st.error(f"❌ Error koneksi ke Telegram: {e}")
         return False
-
+        
 #============================
 #MAIN INTERFACE
 #============================
@@ -451,6 +456,14 @@ if metrics is not None:
     c3.metric("WMAPE", f"{metrics.loc[metrics.metric == 'WMAPE', 'value'].values[0]:.2f}%")
 else:
     st.info("Metric evaluasi belum tersedia")
+
+#Inisialisasi status telegram
+if "telegram_sent" not in st.session_state:
+    st.session_state.telegram_sent = False
+
+#reset statu menjadi False jika tombol Simpan/Prediksi di klik
+if butoon_predict:
+    st.session_date.telegram_sent = False
 
 #=============================
 #Forecasting Logic
@@ -732,37 +745,51 @@ if should_run_prediction:
                 #================
                 #mengirim notifikasi telegram
                 #================
-                if button_predict:
-                    pesan_telegram= textwrap.dedent(f"""
-                        *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
-                        Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
-                        Status Toko: *{status_toko}*
+                st.markdown("---")
+                pesan_telegram= textwrap.dedent(f"""
+                    *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
+                    Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
+                    Status Toko: *{status_toko}*
 
-                        *Rekomendasi Produksi Menu:*
-                        - Ayam: {df_rekom_menu['Terjual Ayam'].iloc[0]} pcs
-                        - Udang: {df_rekom_menu['Terjual Udang'].iloc[0]} pcs
-                        - Keju: {df_rekom_menu['Terjual Keju'].iloc[0]} pcs
-                        - Telur: {df_rekom_menu['Terjual Telur'].iloc[0]} pcs
-                        - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
+                    *Rekomendasi Produksi Menu:*
+                    - Ayam: {df_rekom_menu['Terjual Ayam'].iloc[0]} pcs
+                    - Udang: {df_rekom_menu['Terjual Udang'].iloc[0]} pcs
+                    - Keju: {df_rekom_menu['Terjual Keju'].iloc[0]} pcs
+                    - Telur: {df_rekom_menu['Terjual Telur'].iloc[0]} pcs
+                    - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
 
-                        *Estimasi Belanja Bahan:*
-                        - Ayam, {ayam_kg/1000:.2f} Kg
-                        - Udang, {udang_kg/1000:.2f} Kg
-                        - Sosis, {int(sosis_pcs):.2f} pcs
-                        - Keju, {keju_kg/1000:.2f} Kg
-                        - Telur, {int(telur_btr):.2f} butir
-                        - Tepung, {tepung_kg/1000:.2f} Kg
-                        - Mentega, {mentega_kg/1000:.2f} Kg
-                        - Mayonaise, {mayonaise_kg/1000:.2f} Kg
-                        - Panir, {panir_kg/1000:.2f} Kg
-                        - Kentang_Wortel, {kentang_wortel_kg/1000:.2f} Kg
-                        - Seledri, {seledri_kg/1000:.2f} Kg
-                        - Daun_bawang, {daun_bawang_kg/1000:.2f} Kg
-                        - Bamer, {bamer_kg/1000:.2f} Kg
-                        - Baput, {baput_kg/1000:.2f} Kg
-                        """)
-                    if send_telegram_message(pesan_telegram):
-                        st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
+                    *Estimasi Belanja Bahan:*
+                    - Ayam, {ayam_kg/1000:.2f} Kg
+                    - Udang, {udang_kg/1000:.2f} Kg
+                    - Sosis, {int(sosis_pcs):.2f} pcs
+                    - Keju, {keju_kg/1000:.2f} Kg
+                    - Telur, {int(telur_btr):.2f} butir
+                    - Tepung, {tepung_kg/1000:.2f} Kg
+                    - Mentega, {mentega_kg/1000:.2f} Kg
+                    - Mayonaise, {mayonaise_kg/1000:.2f} Kg
+                    - Panir, {panir_kg/1000:.2f} Kg
+                    - Kentang_Wortel, {kentang_wortel_kg/1000:.2f} Kg
+                    - Seledri, {seledri_kg/1000:.2f} Kg
+                    - Daun_bawang, {daun_bawang_kg/1000:.2f} Kg
+                    - Bamer, {bamer_kg/1000:.2f} Kg
+                    - Baput, {baput_kg/1000:.2f} Kg
+                    """)
+
+                    if button_predict and not st.session_state.telegram_sent:
+                        if send_telegram_message(pesan_telegram):
+                            st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
+                            st.session_state.telegram_sent = True
+
+                    #untuk mengirim manual pesan kapan saja
+                    col_tgl1, _ = st.columns([1, 2])
+                    with col_tgl1:
+                        btn_resend = st.button(
+                            "📲 Kirim Notifikasi ke Telegram", key="btn_resend_tg"
+                        )
+
+                    if btn_resend:
+                        if send_telegram_message(pesan_telegram):
+                            st.toast("Notifikasi berhasil dikirim ke Telegram", icon="✅")
             except Exception as e:
                 st.error(
                     f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n*Tips:"
