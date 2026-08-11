@@ -33,8 +33,8 @@ gholiday_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(BASE_DIR, "tft_model_produksi.pt")
-telegram_token = st.secrets.get("TELEGRAM_TOKEN", "")
-chat_id = st.secrets.get("CHAT_ID", "")
+telegram_token = st.secrets.get("telegram", {}).get("TELEGRAM_TOKEN", "")
+chat_id = st.secrets.get("telegram", {}).get("CHAT_ID", "")
 
 #safety buffer 5%
 SAFETY_BUFFER = 1.05
@@ -326,19 +326,16 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
         return None
         
 #Helper telegram
-def send_telegram_message(message):
-    token = st.secrets.get("TELEGRAM_TOKEN", "")
-    c_id = st.secrets.get("CHAT_ID", "")
-
+def send_telegram_message(message, token, c_id):
     if not token or not c_id:
-        st.error("❌ Token Telegram atau Chat ID tidak ditemukan di Secrets!")
+        st.error("❌ Token Telegram atau Chat ID tidak ditemukan di Secrets [telegram]!")
         return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": c_id,
         "text": message,
-        "parse_mode": "HTML",  # Memakai HTML agar tidak mudah error sintaks
+        "parse_mode": "HTML",
     }
 
     try:
@@ -347,9 +344,7 @@ def send_telegram_message(message):
         if response.status_code == 200 and res_data.get("ok"):
             return True
         else:
-            st.error(
-                f"❌ Telegram API Error: {res_data.get('description', res_data)}"
-            )
+            st.error(f"❌ Telegram API Error: {res_data.get('description', res_data)}")
             return False
     except Exception as e:
         st.error(f"❌ Error koneksi ke Telegram: {e}")
@@ -774,9 +769,10 @@ if should_run_prediction:
                     - Bamer, {bamer_kg/1000:.2f} Kg
                     - Baput, {baput_kg/1000:.2f} Kg
                     """)
+                
                 if button_predict and not st.session_state.telegram_sent:
-                    if send_telegram_message(pesan_telegram):
-                        st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
+                    if send_telegram_message(pesan_telegram, telegram_token, chat_id):
+                        st.toast("Notifikasi berhasil dikirim ke Telegram!", icon="✅")
                         st.session_state.telegram_sent = True
 
                 #untuk mengirim manual pesan kapan saja
@@ -787,8 +783,8 @@ if should_run_prediction:
                     )
 
                 if btn_resend:
-                    if send_telegram_message(pesan_telegram):
-                        st.toast("Notifikasi berhasil dikirim ke Telegram", icon="✅")
+                    if send_telegram_message(pesan_telegram, telegram_token, chat_id):
+                        st.toast("Notifikasi berhasil dikirim ke Telegram!", icon="✅")
             except Exception as e:
                 st.error(
                     f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n*Tips:"
