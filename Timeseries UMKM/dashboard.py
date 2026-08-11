@@ -774,22 +774,21 @@ if should_run_prediction:
                     - Bamer, {bamer_kg/1000:.2f} Kg
                     - Baput, {baput_kg/1000:.2f} Kg
                     """)
+                if button_predict and not st.session_state.telegram_sent:
+                    if send_telegram_message(pesan_telegram):
+                        st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
+                        st.session_state.telegram_sent = True
 
-                    if button_predict and not st.session_state.telegram_sent:
-                        if send_telegram_message(pesan_telegram):
-                            st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
-                            st.session_state.telegram_sent = True
+                #untuk mengirim manual pesan kapan saja
+                col_tgl1, _ = st.columns([1, 2])
+                with col_tgl1:
+                    btn_resend = st.button(
+                        "📲 Kirim Notifikasi ke Telegram", key="btn_resend_tg"
+                    )
 
-                    #untuk mengirim manual pesan kapan saja
-                    col_tgl1, _ = st.columns([1, 2])
-                    with col_tgl1:
-                        btn_resend = st.button(
-                            "📲 Kirim Notifikasi ke Telegram", key="btn_resend_tg"
-                        )
-
-                    if btn_resend:
-                        if send_telegram_message(pesan_telegram):
-                            st.toast("Notifikasi berhasil dikirim ke Telegram", icon="✅")
+                if btn_resend:
+                    if send_telegram_message(pesan_telegram):
+                        st.toast("Notifikasi berhasil dikirim ke Telegram", icon="✅")
             except Exception as e:
                 st.error(
                     f"⚠️ **Terjadi Kesalahan pada Model Prediction:** {e}\n\n*Tips:"
