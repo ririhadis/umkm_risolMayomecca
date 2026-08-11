@@ -8,6 +8,7 @@ import holidays
 import os
 import pytz
 import textwrap
+import requests
 
 from darts import TimeSeries
 from darts.models import TFTModel
@@ -325,17 +326,28 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
         return None
         
 #Helper telegram
-def send_telegram_sync(message):
+def send_telegram_message(message):
+    if not telegram_token or not chat_id:
+        st.error("❌ Token Telegram atau Chat ID tidak ditemukan di Secrets!")
+        return False
+
+    url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "Markdown",
+    }
+
     try:
-        async def _send():
-            bot = Bot(token = telegram_token)
-            await bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
-
-        asyncio.run(_send())
-        return True
-
+        response = requests.post(url, json=payload, timeout=10)
+        res_data = response.json()
+        if response.status_code == 200 and res_data.get("ok"):
+            return True
+        else:
+            st.error(f"❌ Gagal dari Telegram API: {res_data}")
+            return False
     except Exception as e:
-        st.error(f"Gagal kirim Telegram: {e}")
+        st.error(f"❌ Error koneksi Telegram: {e}")
         return False
 
 #============================
