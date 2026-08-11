@@ -693,11 +693,11 @@ if should_run_prediction:
                 b1, b2, b3, b4 = st.columns(4)
                 b1.metric("Ayam", f"{(ayam_kg/1000):.2f} Kg")
                 b2.metric("Udang", f"{(udang_kg/1000):.2f} Kg")
-                b3.metric("Sosis", f"{int(sosis_pcs)/10} bungkus")
+                b3.metric("Sosis", f"{int(sosis_pcs)/10:.2f} bungkus")
                 b4.metric("Keju", f"{(keju_kg/1000):.2f} Kg")
 
                 b5, b6, b7, b8 = st.columns(4)
-                b5.metric("Telur", f"{int(telur_btr)/30} papan")
+                b5.metric("Telur", f"{int(telur_btr)/30:.2f} papan")
                 b6.metric("Tepung", f"{(tepung_kg/1000):.2f} Kg")
                 b7.metric("Mentega", f"{(mentega_kg/1000):.2f} Kg")
                 b8.metric("Mayonaise", f"{(mayonaise_kg/1000):.2f} Kg")
@@ -731,9 +731,9 @@ if should_run_prediction:
                         *Estimasi Belanja Bahan:*
                         - Ayam, {ayam_kg/1000:.2f} Kg
                         - Udang, {udang_kg/1000:.2f} Kg
-                        - Sosis, {int(sosis_pcs)} pcs
+                        - Sosis, {int(sosis_pcs):.2f} pcs
                         - Keju, {keju_kg/1000:.2f} Kg
-                        - Telur, {int(telur_btr)} butir
+                        - Telur, {int(telur_btr):.2f} butir
                         - Tepung, {tepung_kg/1000:.2f} Kg
                         - Mentega, {mentega_kg/1000:.2f} Kg
                         - Mayonaise, {mayonaise_kg/1000:.2f} Kg
