@@ -690,23 +690,27 @@ if should_run_prediction:
 
                 #Grid 3: Belanja Bahan Baku
                 st.markdown("##### Estimasi Kebutuhan Bahan Baku Utama")
-                b1, b2, b3, b4, b5, b6, b7 = st.columns(7) 
-                b1.metric("Ayam", f"{ayam_kg:.2f} Kg")
-                b2.metric("Udang", f"{udang_kg:.2f} Kg")
-                b3.metric("Sosis", f"{sosis_pcs} pcs")
-                b4.metric("Keju", f"{keju_kg:.2f} Kg")
-                b5.metric("Telur", f"{telur_btr} butir")
-                b6.metric("Tepung", f"{tepung_kg:.2f} Kg")
-                b7.metric("Mentega", f"{mentega_kg:.2f} Kg")
+                b1, b2, b3, b4 = st.columns(4)
+                b1.metric("Ayam", f"{(ayam_kg/1000):.2f} Kg")
+                b2.metric("Udang", f"{(udang_kg/1000):.2f} Kg")
+                b3.metric("Sosis", f"{int(sosis_pcs)} Pcs")
+                b4.metric("Keju", f"{(keju_kg/1000):.2f} Kg")
 
-                b8, b9, b10, b11, b12, b13, b14 = st.columns(7)
-                b8.metric("Mayonaise", f"{mayonaise_kg:.2f} Kg")
-                b9.metric("Panir", f"{panir_kg:.2f} Kg")
-                b10.metric("Kentang_Wortel", f"{kentang_wortel_kg:.2f} Kg")
-                b11.metric("Seledri", f"{seledri_kg:.2f} Kg")
-                b12.metric("Daun_bawang", f"{daun_bawang_kg:.2f} Kg")
-                b13.metric("Bamer", f"{bamer_kg:.2f} Kg")
-                b14.metric("Baput", f"{baput_kg:.2f} Kg")
+                b5, b6, b7, b8 = st.columns(4)
+                b5.metric("Telur", f"{int(telur_btr)} Butir")
+                b6.metric("Tepung", f"{(tepung_kg/1000):.2f} Kg")
+                b7.metric("Mentega", f"{(mentega_kg/1000):.2f} Kg")
+                b8.metric("Mayonaise", f"{(mayonaise_kg/1000):.2f} Kg")
+
+                b9, b10, b11, b12 = st.columns(4)
+                b9.metric("Panir", f"{(panir_kg/1000):.2f} Kg")
+                b10.metric("Kentang & Wortel", f"{(kentang_wortel_kg/1000):.2f} Kg")
+                b11.metric("Seledri", f"{(seledri_kg/1000):.2f} Kg")
+                b12.metric("Daun Bawang", f"{(daun_bawang_kg/1000):.2f} Kg")
+
+                b13, b14, _, _ = st.columns(4)
+                b13.metric("Bawang Merah", f"{(bamer_kg/1000):.2f} Kg")
+                b14.metric("Bawang Putih", f"{(baput_kg/1000):.2f} Kg")
 
                 #================
                 #mengirim notifikasi telegram
@@ -725,20 +729,20 @@ if should_run_prediction:
                         - Sosis: {df_rekom_menu['Terjual Sosis'].iloc[0]} pcs
 
                         *Estimasi Belanja Bahan:*
-                        - Ayam, {ayam_kg:.2f} Kg
-                        - Udang, {udang_kg:.2f} Kg
-                        - Sosis, {sosis_pcs} pcs
-                        - Keju, {keju_kg:.2f} Kg
-                        - Telur, {telur_btr} butir
-                        - Tepung, {tepung_kg:.2f} Kg
-                        - Mentega, {mentega_kg:.2f} Kg
-                        - Mayonaise, {mayonaise_kg:.2f} Kg
-                        - Panir, {panir_kg:.2f} Kg
-                        - Kentang_Wortel, {kentang_wortel_kg:.2f} Kg
-                        - Seledri, {seledri_kg:.2f} Kg
-                        - Daun_bawang, {daun_bawang_kg:.2f} Kg
-                        - Bamer, {bamer_kg:.2f} Kg
-                        - Baput, {baput_kg:.2f} Kg
+                        - Ayam, {ayam_kg/1000:.2f} Kg
+                        - Udang, {udang_kg/1000:.2f} Kg
+                        - Sosis, {int(sosis_pcs)} pcs
+                        - Keju, {keju_kg/1000:.2f} Kg
+                        - Telur, {int(telur_btr)} butir
+                        - Tepung, {tepung_kg/1000:.2f} Kg
+                        - Mentega, {mentega_kg/1000:.2f} Kg
+                        - Mayonaise, {mayonaise_kg/1000:.2f} Kg
+                        - Panir, {panir_kg/1000:.2f} Kg
+                        - Kentang_Wortel, {kentang_wortel_kg/1000:.2f} Kg
+                        - Seledri, {seledri_kg/1000:.2f} Kg
+                        - Daun_bawang, {daun_bawang_kg/1000:.2f} Kg
+                        - Bamer, {bamer_kg/1000:.2f} Kg
+                        - Baput, {baput_kg/1000:.2f} Kg
                         """)
                     if send_telegram_sync(pesan_telegram):
                         st.toast("Notifikasi berhasil dikirim ke telegram!", icon="✅")
