@@ -85,6 +85,12 @@ def load_sales():
     #Mengambil historis data penjualan
     df = pd.read_csv(gsheet_url, parse_dates=["Tanggal"])
     df = df.set_index("Tanggal").sort_index()
+    
+    if 'Aktifitas' in df.columns:
+        df['hari_libur'] = (df['Aktifitas'] == 'TUTUP').astype(int)
+    else:
+        df['hari_libur'] = 0
+    
     return df
 
 def prepare_darts_data(df_input, target_cols, past_cov_cols):
@@ -102,6 +108,11 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     df_clean.index = df_clean.index.normalize()
     df_clean = df_clean[~df_clean.index.duplicated(keep='last')].sort_index()
 
+    if "Aktifitas" in df_clean.columns:
+        df_clean["hari_libur"] = (df_clean["Aktifitas"] == "TUTUP").astype(int)
+    elif "hari_libur" not in df_clean.columns:
+        df_clean["hari_libur"] = 0
+        
     # Memastikan kolom numerik
     all_needed_cols = list(target_cols) + list(past_cov_cols)
     for col in all_needed_cols:
@@ -110,8 +121,11 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
 
     #Resample harian
     #Membuat deret tanggal lengkap tanpa loncatan
-    full_idx = pd.date_range(start=df_clean.index.min(), end=df_clean.index.max(), freq="D")
-    df_clean = df_clean[all_needed_cols].reindex(full_idx).fillna(0)
+    cols_to_reindex = list(set(all_needed_cols + ["hari_libur"]))
+    full_idx = pd.date_range(
+        start=df_clean.index.min(), end=df_clean.index.max(), freq="D"
+    )
+    df_clean = df_clean[cols_to_reindex].reindex(full_idx).fillna(0)
 
     start_date = df_clean.index.min()
     
@@ -119,14 +133,20 @@ def prepare_darts_data(df_input, target_cols, past_cov_cols):
     max_sales_date = df_clean.index.max()
     extended_end_date = max(max_sales_date + pd.Timedelta(days=180), pd.Timestamp(df_clean.index.max()) + pd.Timedelta(days=30))
 
+    df_covariates = load_holiday(start_date, extended_end_date)
+
+    if "hari_libur" in df_covariates.columns:
+        # Menyelaraskan index data historis dengan df_covariates
+        common_idx = df_clean.index.intersection(df_covariates.index)
+        df_covariates.loc[common_idx, "hari_libur"] = df_covariates.loc[
+            common_idx, "hari_libur"
+        ].combine(df_clean.loc[common_idx, "hari_libur"], max)
+        
     #Membuat TimeSeries Darts & Past Covariates
     y_ts = TimeSeries.from_dataframe(df_clean, value_cols=target_cols, freq="D", fill_missing_dates=True, fillna_value=0)
     past_ts = TimeSeries.from_dataframe(
         df_clean, value_cols=past_cov_cols, freq="D", fill_missing_dates=True, fillna_value=0
     )
-
-    #Membuat Future Covariates sampai 60 hari ke depan
-    df_covariates = load_holiday(start_date, extended_end_date)
     
     future_ts = TimeSeries.from_dataframe(
         df_covariates, value_cols=["hari_libur"], freq="D", fill_missing_dates=True, fillna_value=0
@@ -415,11 +435,13 @@ if should_run_prediction:
     if button_predict and not sudah_input:
         start_time = time.time()
 
+        aktifitas = "TUTUP" if tot_prod == 0 else "BUKA"
         #menyimpan ke google sheets
         with st.spinner("Menyimpan data hari ini ke Google Sheets"):
             row_to_save= [
                 tanggal_baru.strftime("%Y-%m-%d"),
                 tanggal_baru.strftime("%A"), #untuk mendapatkan nama hari
+                aktifitas,
                 prod_ayam, prod_udang, prod_keju, prod_telur, prod_sosis, tot_prod,
                 input_ayam, input_udang, input_keju, input_telur, input_sosis, tot_sale,
                 sisa
@@ -432,6 +454,7 @@ if should_run_prediction:
                 today_index = pd.to_datetime(tanggal_baru).normalize()
                 today_data = pd.DataFrame([{
                     "Hari": tanggal_baru.strftime("%A"),
+                    "Aktifitas": aktifitas,
                     "Produksi Ayam": prod_ayam, "Produksi Udang": prod_udang,
                     "Produksi Keju": prod_keju, "Produksi Telur": prod_telur,
                     "Produksi Sosis": prod_sosis, "Total Produksi": tot_prod,
@@ -452,6 +475,23 @@ if should_run_prediction:
             
                 #Clear cache untuk pemanggilan berikutnya
                 load_sales.clear()
+
+                #Memanggil prepare_darts_data dan jalankan prediksi
+                (y_scaled, past_scaled, future_scaled, scaler_y, df_covariates) = (
+                prepare_darts_data(df_sales, target_cols, past_cov_cols)
+                )
+
+                #jalankan model TFT Predict
+                predictions_scaled = model.predict(
+                    n=7,
+                    series=y_scaled,
+                    past_covariates=past_scaled,
+                    future_covariates=future_scaled,
+                )
+
+                #Inverse ke skala asli
+                predictions = scaler_y.inverse_transform(predictions_scaled)
+                
                 st.toast(
                     "Data hari ini berhasil tersimpan di Google Sheet!", icon="💾"
                 )
