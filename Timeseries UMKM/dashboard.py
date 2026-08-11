@@ -510,7 +510,7 @@ if should_run_prediction:
                 st.error(
                     f"Gagal menyimpan data ke Google Sheets! Pastikan st.secrets sudah dikonfigurasi. Detail Error: {e}"
                 )
-                st.stop()
+                st.rerun()
 
     # Jalankan prediksi untuk besok
     with st.spinner("Perhitungan estimasi demand dan bahan baku"):
@@ -754,6 +754,3 @@ if should_run_prediction:
 st.divider()
 st.subheader("📈 Trend Penjualan Historis (30 Hari Terakhir)")
 st.line_chart(df_sales[target_cols].tail(30))
-
-time.sleep(1)
-st.rerun()
