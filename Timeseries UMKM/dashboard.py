@@ -302,13 +302,13 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
         scaler_future = Scaler()
 
         y_scaled = scaler_y.fit_transform(y_ts_eval)
-        past_conv_scaled = scaler_past.fit_transform(past_cov_ts)
-        future_conv_scaled = scaler_future.fit_transform(future_cov_ts)
+        past_cov_scaled = scaler_past.fit_transform(past_cov_ts)
+        future_cov_scaled = scaler_future.fit_transform(future_cov_ts)
 
         historical_pred_scaled = _model.historical_forecasts(
              series=y_scaled,
-             past_covariates=past_conv_scaled,
-             future_covariates=future_conv_scaled,
+             past_covariates=past_cov_scaled,
+             future_covariates=future_cov_scaled,
              start=0.5,
              forecast_horizon=1,
              stride=1,
@@ -353,6 +353,15 @@ try:
 except Exception as e:
     st.error(f"Gagal memuat resource: {e}")
     st.stop()
+
+target_cols = [
+    "Terjual Ayam",
+    "Terjual Udang",
+    "Terjual Keju",
+    "Terjual Telur",
+    "Terjual Sosis",
+]
+past_cov_cols = ["Sisa"]
 
 #================================
 #SIDEBAR INPUT REAL-TIME HARI INI
@@ -478,7 +487,9 @@ if should_run_prediction:
 
                 #Memanggil prepare_darts_data dan jalankan prediksi
                 (y_scaled, past_scaled, future_scaled, scaler_y, df_covariates) = (
-                prepare_darts_data(df_sales, target_cols, past_cov_cols)
+                    prepare_darts_data(
+                        df_sales, target_cols, past_cov_cols
+                    )
                 )
 
                 #jalankan model TFT Predict
@@ -565,7 +576,7 @@ if should_run_prediction:
                 sorted_menu = pred_series.sort_values(ascending=False)
 
                 best_seller = sorted_menu.index[0]
-                best_seller_val = sorted_menua.iloc[0]
+                best_seller_val = sorted_menu.iloc[0]
                 slow_mover = sorted_menu.index[-1]
                 slow_mover_val = sorted_menu.iloc[-1]
                 
@@ -589,7 +600,7 @@ if should_run_prediction:
 
                 #Grid 2: Rekomendasi Produk terjual
                 st.markdown("#### Analisis dan Rekomendasi Penjualan Produk")
-                col_rec1, col_rec2 = st.column(2)
+                col_rec1, col_rec2 = st.columns(2)
                 with col_rec1:
                     st.success(
                         f"🔥 **Best Seller:** **{best_seller}** ({best_seller_val}"
