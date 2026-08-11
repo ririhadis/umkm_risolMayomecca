@@ -410,7 +410,7 @@ prod_telur = st.sidebar.number_input("Produksi Telur", min_value=0)
 prod_sosis = st.sidebar.number_input("Produksi Sosis", min_value=0)
 tot_prod = prod_ayam +  prod_udang + prod_keju + prod_telur + prod_sosis
 
-st.markdown("--------------")
+st.sidebar.divider()
 
 #input penjualan 5 menu utama
 input_ayam = st.sidebar.number_input("Terjual Ayam", min_value=0)
