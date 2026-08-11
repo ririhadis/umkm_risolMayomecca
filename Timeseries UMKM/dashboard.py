@@ -410,13 +410,18 @@ prod_telur = st.sidebar.number_input("Produksi Telur", min_value=0)
 prod_sosis = st.sidebar.number_input("Produksi Sosis", min_value=0)
 tot_prod = prod_ayam +  prod_udang + prod_keju + prod_telur + prod_sosis
 
+st.divider()
+
 #input penjualan 5 menu utama
 input_ayam = st.sidebar.number_input("Terjual Ayam", min_value=0)
 input_udang = st.sidebar.number_input("Terjual Udang", min_value=0)
 input_keju = st.sidebar.number_input("Terjual Keju", min_value=0)
 input_telur = st.sidebar.number_input("Terjual Telur", min_value=0)
 input_sosis = st.sidebar.number_input("Terjual Sosis", min_value=0)
+
 tot_sale = input_ayam + input_udang + input_keju + input_telur + input_sosis
+st.sidebar.metric("Total Pejualan (Semua Menu)", value=tot_sale)
+
 
 #Input sisa stok
 sisa = tot_prod - tot_sale
