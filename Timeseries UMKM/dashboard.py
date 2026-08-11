@@ -80,7 +80,7 @@ def append_data_to_gsheet(spreadsheets_id, new_row_data):
         return False
 
 #lOAD data & Model (Cached)
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=600)
 def load_sales():
     #Mengambil historis data penjualan
     df = pd.read_csv(gsheet_url, parse_dates=["Tanggal"])
