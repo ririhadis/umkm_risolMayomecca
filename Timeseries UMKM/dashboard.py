@@ -732,7 +732,7 @@ if should_run_prediction:
                 #================
                 #mengirim notifikasi telegram
                 #================
-                if button_predict::
+                if button_predict:
                     pesan_telegram= textwrap.dedent(f"""
                         *SMARTSTOCK AI - NOTIFIKASI PRODUKSI*
                         Target Tanggal: *{besok_date.strftime('%d %B %Y')}*
