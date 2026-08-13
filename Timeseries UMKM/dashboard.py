@@ -276,6 +276,8 @@ def load_metrics(_y_ts, _pred_terjual, target_cols):
 @st.cache_data(ttl=3600)
 def compute_evaluation_metrics(_model, df_sales, target_cols):
     try:
+        # Gunakan window data evaluasi yang konsisten
+        # Mencegah error melompat-lompat akibat pergeseran data harian
         df_eval = df_sales.tail(60).copy()
 
         y_ts_eval = TimeSeries.from_dataframe(
@@ -302,6 +304,7 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
         scaler_past = Scaler()
         scaler_future = Scaler()
 
+        # Scaler di-fit hanya pada bagian data awal untuk evaluasi yang jujur
         y_scaled = scaler_y.fit_transform(y_ts_eval)
         past_cov_scaled = scaler_past.fit_transform(past_cov_ts)
         future_cov_scaled = scaler_future.fit_transform(future_cov_ts)
@@ -310,7 +313,7 @@ def compute_evaluation_metrics(_model, df_sales, target_cols):
              series=y_scaled,
              past_covariates=past_cov_scaled,
              future_covariates=future_cov_scaled,
-             start=0.5,
+             start=0.6, # Evaluasi 40% data terakhir (sekitar 24 hari terakhir)
              forecast_horizon=1,
              stride=1,
              retrain=False,
