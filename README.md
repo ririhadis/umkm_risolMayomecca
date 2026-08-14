@@ -256,13 +256,13 @@ These analyses can support decisions about production allocation and inventory p
 
 ## 🚀 Live Dashboard & Smart Stock System
 
-Aplikasi ini digunakan untuk memantau stok dan transaksi UMKM Risol Mayo Mecca secara *real-time*. 
+This application is used to monitor the stock and transactions of UMKM Risol Mayo Mecca in real-time. 
 
-Untuk melihat status stok, metric harian, dan analisis data terkini, silakan akses aplikasi langsung melalui link berikut:
+To view stock status, daily metrics, and the latest data analytics, please access the application directly via the following link:
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://umkmrisolmayomecca-smartstock.streamlit.app/)
 
-> 💡 **Catatan:** Angka metric dan stok pada dokumentasi/screenshot repositori ini bersifat contoh/statis. Seluruh data *live* dan ter-update dapat dilihat langsung pada link aplikasi di atas.
+> 💡 **Note:** The metric figures and stock levels in this repository's documentation are static/example data. All live and updated data can be viewed directly on the application link above.
 
 ### Metric Interpretation
 
@@ -275,7 +275,7 @@ Penalizes larger forecasting errors more strongly than MAE.
 **WMAPE (Weighted Mean Absolute Percentage Error)**
 Measures forecasting error relative to the total actual demand and provides an interpretable percentage-based metric.
 
-The achieved **4.95% WMAPE** indicates relatively low forecasting error compared with the total sales volume in the evaluated data.
+The achieved **low WMAPE** indicates relatively low forecasting error compared with the total sales volume in the evaluated data.
 
 ---
 
