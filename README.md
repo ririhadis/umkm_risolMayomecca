@@ -254,15 +254,15 @@ These analyses can support decisions about production allocation and inventory p
 
 ---
 
-## 📏 Model Evaluation
+## 🚀 Live Dashboard & Smart Stock System
 
-The forecasting model is evaluated using multiple metrics:
+Aplikasi ini digunakan untuk memantau stok dan transaksi UMKM Risol Mayo Mecca secara *real-time*. 
 
-| Metric |        Result |
-| ------ | ------------: |
-| MAE    | **16.69 pcs** |
-| RMSE   | **21.88 pcs** |
-| WMAPE  |     **4.95%** |
+Untuk melihat status stok, metric harian, dan analisis data terkini, silakan akses aplikasi langsung melalui link berikut:
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://umkmrisolmayomecca-smartstock.streamlit.app/)
+
+> 💡 **Catatan:** Angka metric dan stok pada dokumentasi/screenshot repositori ini bersifat contoh/statis. Seluruh data *live* dan ter-update dapat dilihat langsung pada link aplikasi di atas.
 
 ### Metric Interpretation
 
